@@ -1,0 +1,14 @@
+[
+    {
+        "device":"Tin HiFi T3",
+        "parametricConfig":"https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/oratory1990/harman_in-ear_2019v2/Tin%20HiFi%20T3/Tin%20HiFi%20T3%20ParametricEQ.txt"
+    },
+    {
+       "device":"Philips SHP9600",
+       "parametricConfig":"https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/rtings/rtings_harman_over-ear_2018/Philips%20SHP9600/Philips%20SHP9600%20ParametricEQ.txt"
+    },
+    {
+       "device":"Koss KPH30i",
+       "parametricConfig":"https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/oratory1990/harman_over-ear_2018/Koss%20KPH30i/Koss%20KPH30i%20ParametricEQ.txt"
+    }
+ ]

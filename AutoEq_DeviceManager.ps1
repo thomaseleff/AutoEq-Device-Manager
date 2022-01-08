@@ -393,7 +393,7 @@ function list_devices {
 
 # Build System Tray Icon Object
 $sysTrayApp = New-Object System.Windows.Forms.NotifyIcon
-$sysTrayApp.Text = 'EqualizerAPO Audio Device Manager'
+$sysTrayApp.Text = 'AutoEq Device Manager'
 
 # Assign Icon
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($dir+'\Editor.exe') 

@@ -23,7 +23,7 @@ Once these steps are completed for all desired playback devices, select "OK" and
 C:/Program Files/EqualizerAPO
 ```
 3. Then, navigate to the "/config" folder and open config.txt.
-   - _config.txt contains the parameters which set the system-wide equalizer profile_
+   - config.txt contains the parameters which set the system-wide equalizer profile
 4. Next, play audio from your computer.
 5. With config.txt open, delete the "-" character from the "Preamp" setting, then click save. You should experience hearing the audio becoming noticeably louder. If you do, you have successfully set up Equalizer APO.
 ## Verifying the PowerShell Version

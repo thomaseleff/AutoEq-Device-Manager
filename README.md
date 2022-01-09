@@ -22,7 +22,7 @@ Once installation is complete, enable Equalizer APO to control any playback devi
 
 1. Within the Configurator window, check the selection box next to the Connector name in order to enable Equalizer APO for that playback device.
 2. Then, click on the Connector name, highlighting it. Next, check the selection box next to "Troubleshooting options (only use in case of problems)". An additional panel of settings should appear.
-3. Next, check the selection boxes for "Install APO" next to both Pre-mix and Post-mix. In the dropdown selector, ensure "Install as SFX/EFX (experimental)" is selected.
+3. Next, check the selection boxes for "Install APO" next to both "Pre-mix" and "Post-mix". In the dropdown selector, ensure "Install as SFX/EFX (experimental)" is selected.
 4. Repeat steps 1-3 for all playback devices you wish to enable Equalizer APO.
 Once these steps are completed for all desired playback devices, select "OK" and restart your computer.
 

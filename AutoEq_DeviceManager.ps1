@@ -87,7 +87,7 @@ function list_devices {
 
     # Initialzie Logging
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
-    write_output -returnAfter $false -dir $dir -str ('|                                                                 EqualizerAPO Audio Device Manager                                                                 |')
+    write_output -returnAfter $false -dir $dir -str ('|                                                                       AutoEq Device Manager                                                                       |')
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
     write_output -returnAfter $true -dir $dir -str ('    Date Time: '+(Get-Date -Format G))
 
@@ -324,7 +324,7 @@ function list_devices {
 
             # Build Output Form
             $outputObj = New-Object System.Windows.Forms.Form
-            $outputObj.Text = 'EqualizerAPO Audio Device Manager Output'
+            $outputObj.Text = 'AutoEq Device Manager Output'
             $outputObj.Size = New-Object System.Drawing.Size @(1250, $formHeight)
             $outputObj.StartPosition = 'CenterScreen'
             $outputObj.AutoScroll = $true

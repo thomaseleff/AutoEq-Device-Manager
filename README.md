@@ -3,7 +3,7 @@ The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net
 
 # Features
 - Ability to switch between any connected playback device
-- Ability to change or remove parametric EQ profiles for any number of audio devices
+- Ability to change or remove parametric EQ profiles for any number of user-configured audio devices
 - Output window for viewing status of the application tasks
 
 # Installation

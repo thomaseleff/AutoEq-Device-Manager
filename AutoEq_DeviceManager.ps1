@@ -27,6 +27,37 @@ Set-Variable -Name 'outputHeader' -Value ([System.Drawing.Font]::new('Courier Ne
 Set-Variable -Name 'outputBody' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Regular))
 
 # Define Functions
+
+function create_icon {
+    param (
+        $unicodeChar,
+        $font,
+        $size,
+        $color,
+        $x,
+        $y
+    )
+
+    # Music-Related Icons and Segoe MDL2 Asset Unicode
+
+
+    # Create Icon Bitmap from Segoe MDL2 Assets
+    Set-Variable -Name 'fontIcon' -Value ([System.Drawing.Font]::new('Segoe MDL2 Assets', $size, [System.Drawing.FontStyle]::Regular))
+    $brush = [System.Drawing.Brushes]::$color
+    $bitmap = New-Object System.Drawing.Bitmap 16,16
+    $bitmapGraphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $bitmapGraphics.DrawString([char]($unicodeChar), $fontIcon, $brush, $x, $y)
+    $bitmapGraphics.SmoothingMode = 'AntiAlias'
+    $bitmapGraphics.TextRenderingHint = 'AntiAliasGridFit'
+    $bitmapGraphics.InterpolationMode = 'High'
+
+    # Cleanup Graphics Object
+    $bitmapGraphics.Flush()
+    $bitmapGraphics.Dispose()
+
+    return [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
+}
+
 function write_output {
     param (
         $returnAfter,
@@ -328,6 +359,7 @@ function list_devices {
             $outputObj.Size = New-Object System.Drawing.Size @(1250, $formHeight)
             $outputObj.StartPosition = 'CenterScreen'
             $outputObj.AutoScroll = $true
+            $outputObj.Icon = create_icon -UnicodeChar 0xEA37 -font $fontIcon -size 12 -color 'Black' -x -5 -y 0
 
             # Initialize Vertical Position
             $position = 0
@@ -396,8 +428,18 @@ $sysTrayApp = New-Object System.Windows.Forms.NotifyIcon
 $sysTrayApp.Text = 'AutoEq Device Manager'
 
 # Assign Icon
-$icon = [System.Drawing.Icon]::ExtractAssociatedIcon($dir+'\Editor.exe') 
-$sysTrayApp.Icon = $icon
+# Music Info: E90B, difficult to make out the resolution
+# Music Album: E93C, difficult to interpret
+# Music Note: EC4F
+# Music Sharing: F623, difficult to make out the resolution
+# Audio: E8D6, appears nicely
+# Equalizer: E9E9, appears nicely
+# Earbud: F4C0
+# Mix Volumes: F4C3, difficult to make out the resolution
+# Speakers: E7F5
+# Headphone: E7F6, appears nicely
+
+$sysTrayApp.Icon = create_icon -UnicodeChar 0xE9E9 -font $fontIcon -size 12 -color 'White' -x -4 -y 0
 $sysTrayApp.Visible = $true
 
 # Build System Tray Menu Object

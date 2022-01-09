@@ -10,9 +10,11 @@ The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net
 Instructions for setting-up the AutoEq Device Manager.
 
 ## Requirements
-- Windows Operating System (minimum Windows 7)
+- Windows Operating System (minimum Windows 10)
 - Equalizer APO (minimum v1.2.1)
 - PowerShell (minimum v5.1)
+
+  _Minimum requirements are known working versions. Any previous version may also be valid, but has not been verified to be working._
 
 ## Installing Equalizer APO
 Equalizer APO is a system-wide Windows parametric equalizer, which allows for applying a single equalizer profile to a given playback device at a given time. Equalizer APO can be downloaded from [SourceForge](https://sourceforge.net/projects/equalizerapo/).

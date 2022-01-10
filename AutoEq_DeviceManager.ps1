@@ -38,9 +38,6 @@ function create_icon {
         $y
     )
 
-    # Music-Related Icons and Segoe MDL2 Asset Unicode
-
-
     # Create Icon Bitmap from Segoe MDL2 Assets
     Set-Variable -Name 'fontIcon' -Value ([System.Drawing.Font]::new('Segoe MDL2 Assets', $size, [System.Drawing.FontStyle]::Regular))
     $brush = [System.Drawing.Brushes]::$color

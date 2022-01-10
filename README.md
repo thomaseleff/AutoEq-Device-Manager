@@ -118,6 +118,12 @@ It is recommended to first run the AutoEq Device Manager manually in order to ve
       PowerShell -File "C:/Program Files/EqualizerAPO/AutoEq_DeviceManager.ps1"
       ```
 5. Accept all prompts to install the required AudioDeviceCmdlets module.
+6. To verify that the AutoEq Device Manager is running successfully, review the icons in the system-tray. Among your other system-tray applications, you should also see the Windows Equalizer icon from the Segoe MDL2 Assets. This is the AutoEq Device Manager, which can be right-clicked to swap between devices and apply any of the user-configured parametric EQ profiles. See the following **Navigating AutoEq Device Manager** section for more information on using the system-tray tool.
+
+    | Asset          | Description    | Unicode        |
+    |     :---:      |     :---:      |     :---:      |
+    | ![Equalizer_Icon](https://user-images.githubusercontent.com/49733042/148802079-17a0d879-620a-47e9-9f93-804aaea043f2.png) | Equalizer  | E9E9  |
+
 
 ### Scheduling Through Windows Task Scheduler to Run at Log-On
 Once the AutoEq Device Manager is verified to be working successfully, create a new task in the Windows Task Scheduler to automatically run the AutoEq Device Manager at log-on.
@@ -145,7 +151,29 @@ Once the AutoEq Device Manager is verified to be working successfully, create a 
 13. Within the "Settings" tab of the pop-up, un-check the selection box next to the "Stop the task if it runs longer than" field.
 14. Click "OK".
 15. The newly created task should now appear within the Task Scheduler Library, and can be run manually by selecting the task, then by clicking Run within the "Actions" panel on the righ-hand side of the window.
-17. Verify that the newly created task was setup correctly, log-off and on again. Once logged-on, AutoEq Device Manager should be running in the system-tray, appearing with a notepad icon.
+17. To verify that the newly created task was setup correctly, log-off and on again. Once logged-on, AutoEq Device Manager should be running in the system-tray.
+
+## Navigating AutoEq Device Manager
+
+Within the AutoEq Device Manager, there is a primary menu containing the tool operation tasks as well as the list of all connected playback devices. Additionally, for each connected playback device, there is a secondary sub-menu for selecting one of the user-configured parametric EQ profiles.
+
+### Switching Playback Devices and Parametric EQ Profiles
+
+1. Navigate to the system-tray and right click on the Equalizer icon (this is the AutoEq Device Manager).
+2. In the pop-up menu, click on the playback device you wish to switch to.
+   - If the desired playback device is not available within the list, click on "Refresh Devices", which will re-fresh the menu with the latest connected devices.
+3. Within the sub-menu of the selected playback device, click on the audio device parametric EQ profile you wish to enable, or select "None" to switch devices and remove any parametric EQ profile.
+
+### Checking the Task Status
+
+1. In case of any unexpected behavior within the AutoEq Device Manager, navigate to the system-tray and right click on the Equalizer icon (this is the AutoEq Device Manager).
+2. In the pop-up menu, click on "Output", which will open the output window showing the status of all executed tasks within a given session of the AutoEq Device Manager.
+   - A new session is always created when the AutoEq Device Manager initially runs, or when "Refresh Devices" is clicked.
+   - In addition to reviewing the status of all executed tasks within the "Output" window, you can also access output.txt within the /config sub-directory of the Equalizer APO installation. Default file path below.
+
+     ```
+     C:/Program Files/EqualizerAPO/config/output.txt
+     ```
 
 # Attribution
 Windows PowerShell scripting methods for creating system-tray tools were sourced from the following two articles from [https://www.systanddeploy.com](https://www.systanddeploy.com):

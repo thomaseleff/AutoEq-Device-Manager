@@ -241,13 +241,13 @@ function list_devices {
                                     ) {
                                         # Switch Parametric EQ Profile
                                         Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('Note: '+$this+' parametric EQ profile successfully assigned.')
+                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+$this+' parametric EQ profile successfully assigned.')
                                     } else {
 
                                         # Switch Devices and Parametric EQ Profile
                                         Set-AudioDevice -Index $deviceIndex
                                         Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('Note: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
+                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
                                     }
                                 }
                             }
@@ -276,19 +276,19 @@ function list_devices {
                                 ) {
                                     # Remove the Parametric EQ Profile
                                     Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('Note: Parametric EQ profile successfully unassigned.')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
                                 } else {
 
                                     # Switch Devices and Remove the Parametric EQ Profile
                                     Set-AudioDevice -Index $deviceIndex
                                     Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('Note: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
                                 }
                             } else {
 
                                 # Switch Devices
                                 Set-AudioDevice -Index $deviceIndex
-                                write_output -returnAfter $false -dir $dir -str ('Note: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
                             }
                         }
                     )

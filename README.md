@@ -65,14 +65,14 @@ The AutoEq Device Manager consists of two components,
 2. eq_profiles.json
 
 Navigate to [AutoEq_DeviceManager.ps1](AutoEq_DeviceManager.ps1), copying the contents into a ".ps1" file within the same directory as the Equalizer APO installation. Default directory below.
-- File name **IS NOT** important.
+- File name _is not_ important.
 
    ```
    C:/Program Files/EqualizerAPO
    ```
 
 Navigate to [eq_profiles.json](config/eq_profiles.json), copying the contents into a file named "eq_profiles.json" within the /config sub-directory of the Equalizer APO installation. Default directory below.
-- File name **IS** important, the file **MUST** be named eq_profiles.json.
+- File name _is_ important, the file _must_ be named eq_profiles.json.
 
    ```
    C:/Program Files/EqualizerAPO/config

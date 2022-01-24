@@ -183,84 +183,66 @@ function list_devices {
         $contextMenu.Items.Clear();
     }
 
-    do {
+    while (
+        # Use for Debugging
+        # $index -lt 6
+
+        # Use to End Loop
+        $err -eq $false
+    ) {
         $index = $index + 1;
         # write_output -returnAfter $true -dir $dir -str $err
         # write_output -returnAfter $true -dir $dir -str $index
+
+        # Check If an Audio Device is Found at Each Index
         try {
-
-            # Check If an Audio Device is Found at Each Index
             Set-Variable -Name 'audioDevice' -Value (Get-AudioDevice -Index $index)
-
-            # Record Audio Device Parameters for All Playback Devices
+        } catch {
+            Set-Variable -Name 'returnedVal' -Value $_
+            Set-Variable -Name 'returnedVal' -Value ($returnedVal -Replace '\s','')
             if (
-                $audioDevice.Type -eq 'Playback'
+                $returnedVal -eq 'NoAudioDevicewiththatIndex'
             ) {
-                $tableAdd = $null
-                $tableAdd = @{
-                    'Index' = $index
-                    'Name' = $audioDevice.Name
-                    'Default' = $audioDevice.Default
-                    'Type' = $audioDevice.Type
-                    'ID' = $audioDevice.ID
-                }
+                Set-Variable -Name 'err' -Value $true
+            } else {
+                continue
+            }
+        }
 
-                $table.Add($audioDevice.Name, $tableAdd)
-                # $table[$index]
-                
-                # Add System Tray Menu Item
-                Set-Variable -Name 'audioDeviceName' -Value $audioDevice.Name
-                Set-Variable -Name 'deviceName' -Value ($index, $audioDeviceName -join ': ')
-                $menuDevice = $contextMenu.Items.Add($deviceName)
+        # Record Audio Device Parameters for All Playback Devices
+        if (
+            $audioDevice.Type -eq 'Playback'
+        ) {
+            $tableAdd = $null
+            $tableAdd = @{
+                'Index' = $index
+                'Name' = $audioDevice.Name
+                'Default' = $audioDevice.Default
+                'Type' = $audioDevice.Type
+                'ID' = $audioDevice.ID
+            }
 
-                # Pack System Tray Sub-Menu Items
-                if (
-                    $addProfiles -eq $true
-                ) {
-                    $validProfiles | ForEach-Object {
+            $table.Add($audioDevice.Name, $tableAdd)
+            # $table[$index]
+            
+            # Add System Tray Menu Item
+            Set-Variable -Name 'audioDeviceName' -Value $audioDevice.Name
+            Set-Variable -Name 'deviceName' -Value ($index, $audioDeviceName -join ': ')
+            $menuDevice = $contextMenu.Items.Add($deviceName)
 
-                        # Add System Tray Sub-Menu Items
-                        $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                        $eqProfile.Text = $_
-                        $eqProfile.Font = $fontReg
-                        $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+            # Pack System Tray Sub-Menu Items
+            if (
+                $addProfiles -eq $true
+            ) {
+                $validProfiles | ForEach-Object {
 
-                        # Add System Tray Sub-Menu Click
-                        $eqProfile.add_Click(
-                            {
-                                # Check Active Audio Device
-                                Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
-                                Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
-                                Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
-                                Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                                if (
-                                    [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
-                                ) {
-                                    if (
-                                        $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
-                                    ) {
-                                        # Switch Parametric EQ Profile
-                                        Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+$this+' parametric EQ profile successfully assigned.')
-                                    } else {
-
-                                        # Switch Devices and Parametric EQ Profile
-                                        Set-AudioDevice -Index $deviceIndex
-                                        Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    # Add System Try Sub-Menu Item for None
+                    # Add System Tray Sub-Menu Items
                     $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                    $eqProfile.Text = 'None'
+                    $eqProfile.Text = $_
                     $eqProfile.Font = $fontReg
                     $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
 
-                    # Add System Tray Sub-Menu Click for None
+                    # Add System Tray Sub-Menu Click
                     $eqProfile.add_Click(
                         {
                             # Check Active Audio Device
@@ -269,59 +251,75 @@ function list_devices {
                             Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
                             Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
                             if (
-                                [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
+                                [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
                             ) {
                                 if (
                                     $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
                                 ) {
-                                    # Remove the Parametric EQ Profile
-                                    Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+                                    # Switch Parametric EQ Profile
+                                    Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+$this+' parametric EQ profile successfully assigned.')
                                 } else {
 
-                                    # Switch Devices and Remove the Parametric EQ Profile
+                                    # Switch Devices and Parametric EQ Profile
                                     Set-AudioDevice -Index $deviceIndex
-                                    Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+                                    Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
                                 }
-                            } else {
-
-                                # Switch Devices
-                                Set-AudioDevice -Index $deviceIndex
-                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
                             }
                         }
                     )
-                } else {
-
-                    # Add System Tray Sub-Menu Item for No EQ Profiles Found
-                    $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                    $eqProfile.Text = 'No EQ Profiles Found'
-                    $eqProfile.Font = $fontReg
-                    $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
                 }
-                
-            }
-        } catch {
-            Set-Variable -Name 'returnedVal' -Value $_
-            Set-Variable -Name 'returnedVal' -Value ($returnedVal -Replace '\s','')
-            if (
-                $returnedVal -eq 'NoAudioDevicewiththatIndex'
-            ) {
-                Set-Variable -Name 'err' -Value $true
-                # write_output -returnAfter $true -dir $dir -str ('ERROR: Invalid Index.')
+
+                # Add System Try Sub-Menu Item for None
+                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $eqProfile.Text = 'None'
+                $eqProfile.Font = $fontReg
+                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+
+                # Add System Tray Sub-Menu Click for None
+                $eqProfile.add_Click(
+                    {
+                        # Check Active Audio Device
+                        Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
+                        Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
+                        Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
+                        Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
+                        if (
+                            [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
+                        ) {
+                            if (
+                                $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
+                            ) {
+                                # Remove the Parametric EQ Profile
+                                Remove-Item -Path ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+                            } else {
+
+                                # Switch Devices and Remove the Parametric EQ Profile
+                                Set-AudioDevice -Index $deviceIndex
+                                Remove-Item -Path ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+                            }
+                        } else {
+
+                            # Switch Devices
+                            Set-AudioDevice -Index $deviceIndex
+                            write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+                        }
+                    }
+                )
             } else {
-                write_output -returnAfter $true -dir $dir -str ('WARNING: No Audio Device Found at Index ['+$index+'].')
+
+                # Add System Tray Sub-Menu Item for No EQ Profiles Found
+                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $eqProfile.Text = 'No EQ Profiles Found'
+                $eqProfile.Font = $fontReg
+                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
             }
+            
         }
     }
-        until (
-            # Use for Debugging
-            # $index -eq 5
-
-            # Use to End Loop
-            $err -eq $true
-        )
 
     # Add System Tray Menu Functions
     $toolSepObj = New-Object System.Windows.Forms.ToolStripSeparator

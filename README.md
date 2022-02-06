@@ -15,6 +15,7 @@ Instructions for setting-up the AutoEq Device Manager.
 - Windows Operating System (minimum Windows 10)
 - Equalizer APO (minimum v1.2.1)
 - PowerShell (minimum v5.1)
+- Internet Connection
 
   _Minimum requirements are known working versions. Any previous version may also be working, but has not been verified._
 

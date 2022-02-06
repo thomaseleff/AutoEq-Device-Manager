@@ -566,15 +566,15 @@ function list_devices {
         } elseif (
             $jsonErr -eq $true
         ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: eq_profiles.json is not a valid .json file. Check the Output for more information.'
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json is not a valid .json file. Check the 'Output' for more information."
         } elseif (
             $profileErr -eq $true
         ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: Error(s) found in eq_profiles.json. Check the Output for more information.'
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: Error(s) found in eq_profiles.json. Check the 'Output' for more information."
         } elseif (
             $profileWarn -eq $true
         ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: eq_profiles.json not found within the \config folder. Check the Output for more information.'
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json not found within the \config folder. Check the 'Output' for more information."
         } else {
             if (
                 $restart -eq $true

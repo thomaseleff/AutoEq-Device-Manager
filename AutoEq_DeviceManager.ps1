@@ -18,13 +18,23 @@ try {
 # Import Assemblies
 Add-Type -AssemblyName System.Windows.Forms 
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Speech
 
 # Assign Global Varibles
+Set-Variable -Name 'sysTrayAppName' -Value 'AutoEq Device Manager'
 Set-Variable -Name 'dir' -Value (split-path $MyInvocation.MyCommand.Path -Parent)
 Set-Variable -Name 'fontBold' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Bold))
 Set-Variable -Name 'fontReg' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Regular))
 Set-Variable -Name 'outputHeader' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Bold))
 Set-Variable -Name 'outputBody' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Regular))
+
+# Create Text to Speech Synth Object
+Set-Variable -Name 'synth' -Value (New-Object System.Speech.Synthesis.SpeechSynthesizer)
+$synth.Rate = -2
+$global:narrator = $false
+
+# Enable Notifications
+$global:notifications = $true
 
 # Define Functions
 
@@ -89,17 +99,36 @@ function write_output {
     }
 }
 
+function raise_notification {
+    param (
+        $sysTrayApp,
+        $type,
+        $str
+    )
+
+    # Raise Notification
+    $sysTrayApp.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::$type
+    $sysTrayApp.BalloonTipTitle = $sysTrayAppName
+    $sysTrayApp.BalloonTipText = $str
+    $sysTrayApp.ShowBalloonTip(500)
+}
+
 function list_devices {
     param (
         $dir,
+        $sysTrayApp,
         $contextMenu,
         $restart
     )
 
     # Set Local Variables
     Set-Variable -Name 'index' -Value 0
-    Set-Variable -Name 'err' -Value $false
-    Set-Variable -Name 'defaultIndex' -Value 2
+    Set-Variable -Name 'deviceErr' -Value $false
+    Set-Variable -Name 'connectionErr' -Value $false
+    Set-Variable -Name 'jsonErr' -Value $false
+    Set-Variable -Name 'profileWarn' -Value $false
+    Set-Variable -Name 'profileErr' -Value $false
+    Set-Variable -Name 'addProfiles' -Value $false
     Set-Variable -Name 'validProfiles' -Value @()
 
     # Create Hash Table
@@ -115,11 +144,21 @@ function list_devices {
 
     # Initialzie Logging
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
-    write_output -returnAfter $false -dir $dir -str ('|                                                                       AutoEq Device Manager                                                                       |')
+    write_output -returnAfter $false -dir $dir -str ('|                                                                       '+$sysTrayAppName+'                                                                       |')
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
     write_output -returnAfter $true -dir $dir -str ('    Date Time: '+(Get-Date -Format G))
 
-    # Retrive List of Parametric EQ Profiles
+    # Validate Internet Connection
+    if (
+        (Test-Connection -ComputerName www.github.com -Quiet) -ne $true
+    ) {
+
+        # Capture Connection Error for Notification
+        $connectionErr = $true
+        write_output -returnAfter $true -dir $dir -str ('ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.')
+    }
+
+    # Validate Json
     if (
         [System.IO.File]::Exists($dir+'\config\eq_profiles.json') -eq $true
     ) {
@@ -127,53 +166,184 @@ function list_devices {
         # Logging
         write_output -returnAfter $true -dir $dir -str ('NOTE: eq_profiles.json exists within the \config folder as expected.')
 
-        # Retrieve
-        $json = Get-Content -Raw -Path ($dir+'\config\eq_profiles.json') | ConvertFrom-Json
-        $json = $json.GetEnumerator() | Sort-Object device
-        $json | ForEach-Object {
+        try {
+            $json = Get-Content -Raw -Path ($dir+'\config\eq_profiles.json') | ConvertFrom-Json
+            $json = $json.GetEnumerator() | Sort-Object device
+            $json | ConvertTo-Json | Out-File ($dir+'\config\eq_profiles.json')
+        } catch {
+
+            # Capture Json Error for Notification
+            $jsonErr = $true
+            write_output -returnAfter $false -dir $dir -str ('ERROR: eq_profiles.json is not a valid json file.')
+
+            # Replace eq_profiles.json
+            if (
+                $connectionErr -eq $false
+            ) {
+
+                # Backup Existing eq_profiles.json
+                Copy-Item -Path ($dir+'\config\eq_profiles.json') -Destination ($dir+'\config\eq_profiles_backup_'+(Get-Date -Format 'MM_dd_yyyy_HH_mm_ss')+'.json')
+
+                # Download Latest Valid eq_profiles.json
+                Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/thomaseleff/AutoEq-Device-Manager/main/config/eq_profiles.json' -OutFile ($dir+'\config\eq_profiles.json')
+
+                # Logging
+                write_output -returnAfter $false -dir $dir -str ('     ~ The current eq_profiles.json has been backed up as eq_profiles_backup_'+(Get-Date -Format 'MM_dd_yyyy_HH_MM_SS')+'.json within the \config folder.')
+                write_output -returnAfter $false -dir $dir -str ('     ~ The latest eq_profiles.json has been downloaded from [www.github.com].')
+                write_output -returnAfter $true -dir $dir -str ("     ~ Modify the new template eq_profiles.json and then click 'Refresh Devices' from the tool menu.")
+            }
+        }
+    } else {
+
+        # Capture Profile Warning for Notification
+        $profileWarn = $true
+        write_output -returnAfter $false -dir $dir -str ('ERROR: eq_profiles.json not found within the \config folder.')
+
+        # Download eq_profiles.json
+        if (
+            $connectionErr -eq $false
+        ) {
+
+            # Download Latest Valid eq_profiles.json
+            Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/thomaseleff/AutoEq-Device-Manager/main/config/eq_profiles.json' -OutFile ($dir+'\config\eq_profiles.json')
 
             # Logging
-            write_output -returnAfter $false -dir $dir -str ($_.device)
-            write_output -returnAfter $false -dir $dir -str ('+'+('-' * ($_.device.Length-2)+'+'))
+            write_output -returnAfter $false -dir $dir -str ('     ~ The latest eq_profiles.json has been downloaded from [www.github.com].')
+            write_output -returnAfter $true -dir $dir -str ("     ~ Modify the new template eq_profiles.json and then click 'Refresh Devices' from the tool menu.")
+        }
+    }
+
+    # Retrive List of Parametric EQ Profiles
+    if (
+        ($connectionErr -eq $false -And $jsonErr -eq $false -And $profileWarn -eq $false)
+    ) {
+
+        # Retrieve
+        $json | ForEach-Object {
             if (
-                ($_.parametricConfig.ToLower().Contains('https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/'.ToLower()) -And $_.parametricConfig.ToLower().Contains('ParametricEQ.txt'.ToLower()))
+                ('device' -notin $_.PSobject.Properties.Name -And 'parametricConfig' -notin $_.PSobject.Properties.Name)
             ) {
+
+                # Capture Profile Error for Notification
                 if (
-                    [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$_.device+'.txt') -eq $false
+                    $profileErr -eq $false
                 ) {
-                    try {
-                        Invoke-WebRequest -Uri $_.parametricConfig -OutFile ($dir+'\config\Parametric_EQ_'+$_.device+'.txt')
+                    $profileErr = $true
+                }
+                write_output -returnAfter $false -dir $dir -str ('Invalid EQ Profile Entry')
+                write_output -returnAfter $false -dir $dir -str ('+----------------------+')
+                write_output -returnAfter $false -dir $dir -str ('    ERROR: Invalid EQ Profile entry in eq_profiles.json.')
+                write_output -returnAfter $true -dir $dir -str ('         ~ [device] and [parametricConfig] parameters not found.')
+            } elseif (
+                'device' -notin $_.PSobject.Properties.Name
+            ) {
 
-                        # Logging
-                        write_output -returnAfter $false -dir $dir -str ('    NOTE: URL to [parametricConfig] is valid.')
-                        write_output -returnAfter $true -dir $dir -str ('    NOTE: Parametric EQ Config retrieved successfully.')
+                # Capture Profile Error for Notification
+                if (
+                    $profileErr -eq $false
+                ) {
+                    $profileErr = $true
+                }
+                write_output -returnAfter $false -dir $dir -str ('Invalid EQ Profile Entry')
+                write_output -returnAfter $false -dir $dir -str ('+----------------------+')
+                write_output -returnAfter $false -dir $dir -str ('    ERROR: Invalid EQ Profile entry in eq_profiles.json.')
+                write_output -returnAfter $true -dir $dir -str ('         ~ [device] parameter not found.')
+            } elseif (
+                'parametricConfig' -notin $_.PSobject.Properties.Name
+            ) {
 
+                # Capture Profile Error for Notification
+                if (
+                    $profileErr -eq $false
+                ) {
+                    $profileErr = $true
+                }
+                if (
+                    ([string]::IsNullOrWhiteSpace($_.device)) 
+                ) {
+                    write_output -returnAfter $false -dir $dir -str ('Invalid EQ Profile Entry')
+                    write_output -returnAfter $false -dir $dir -str ('+----------------------+')
+                    write_output -returnAfter $false -dir $dir -str ('    ERROR: Invalid EQ Profile entry in eq_profiles.json.')
+                    write_output -returnAfter $false -dir $dir -str ('         ~ [device] parameter exists but is null, empty or contains only white space.')
+                    write_output -returnAfter $true -dir $dir -str ('         ~ [parametricConfig] parameter not found.')
+                } else {
+                    write_output -returnAfter $false -dir $dir -str ($_.device)
+                    write_output -returnAfter $false -dir $dir -str ('+'+('-' * ($_.device.Length-2)+'+'))
+                    write_output -returnAfter $false -dir $dir -str ('    ERROR: Invalid EQ Profile entry in eq_profiles.json.')
+                    write_output -returnAfter $true -dir $dir -str ('         ~ [parametricConfig] parameter not found.')
+                }
+
+            } elseif (
+                ([string]::IsNullOrWhiteSpace($_.device))
+            ) {
+                
+                # Capture Profile Error for Notification
+                if (
+                    $profileErr -eq $false
+                ) {
+                    $profileErr = $true
+                }
+                write_output -returnAfter $false -dir $dir -str ('Invalid EQ Profile Entry')
+                write_output -returnAfter $false -dir $dir -str ('+----------------------+')
+                write_output -returnAfter $false -dir $dir -str ('    ERROR: Invalid EQ Profile entry in eq_profiles.json.')
+                write_output -returnAfter $true -dir $dir -str ('         ~ [device] parameter exists but is null, empty or contains only white space.')
+            } else {
+
+                # Logging
+                write_output -returnAfter $false -dir $dir -str ($_.device)
+                write_output -returnAfter $false -dir $dir -str ('+'+('-' * ($_.device.Length-2)+'+'))
+                if (
+                    ($_.parametricConfig.ToLower().Contains('https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/'.ToLower()) -And $_.parametricConfig.ToLower().Contains('ParametricEQ.txt'.ToLower()))
+                ) {
+                    if (
+                        [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$_.device+'.txt') -eq $false
+                    ) {
+                        try {
+                            Invoke-WebRequest -Uri $_.parametricConfig -OutFile ($dir+'\config\Parametric_EQ_'+$_.device+'.txt')
+    
+                            # Logging
+                            write_output -returnAfter $false -dir $dir -str ('    NOTE: URL to [parametricConfig] is valid.')
+                            write_output -returnAfter $true -dir $dir -str ('    NOTE: Parametric EQ Config retrieved successfully.')
+    
+                            # Add Profile to Valid List
+                            $validProfiles += $_.device
+                        } catch {
+    
+                            # Capture Profile Error for Notification
+                            if (
+                                $profileErr -eq $false
+                            ) {
+                                $profileErr = $true
+                            }
+                            write_output -returnAfter $true -dir $dir -str ('    ERROR: URL to [parametricConfig] not found.')
+                        }     
+                    } else {
+                        write_output -returnAfter $true -dir $dir -str ('    NOTE: Passing, Parametric EQ Config already exists within the \config folder.')
+    
                         # Add Profile to Valid List
                         $validProfiles += $_.device
-                    } catch {
-                        write_output -returnAfter $true -dir $dir -str ('    ERROR: URL to [parametricConfig] not found.')
-                    }     
+                    }
                 } else {
-                    write_output -returnAfter $true -dir $dir -str ('    NOTE: Passing, Parametric EQ Config already exists within the \config folder.')
-                    
-                    # Add Profile to Valid List
-                    $validProfiles += $_.device
+    
+                    # Capture Profile Error for Notification
+                    if (
+                        $profileErr -eq $false
+                    ) {
+                        $profileErr = $true
+                    }
+                    write_output -returnAfter $false -dir $dir -str ('    ERROR: URL to [parametricConfig] is invalid or is null, empty or contains only white space.')
+                    write_output -returnAfter $false -dir $dir -str ('         ~ The URL must begin with [https://raw.githubusercontent.com/] and link to a')
+                    write_output -returnAfter $true -dir $dir -str ('         ~ Parametric EQ profile within the [jaakkopasanen/AutoEQ] Github project.')
                 }
-            } else {
-                write_output -returnAfter $false -dir $dir -str ('    ERROR: URL to [parametricConfig] is invalid.')
-                write_output -returnAfter $false -dir $dir -str (         '~ The URL must begin with [https://raw.githubusercontent.com/] and link to a')
-                write_output -returnAfter $true -dir $dir -str (         '~ Parametric EQ profile within the [jaakkopasanen/AutoEQ] Github project.')
             }
         }
 
         # Set Flag
-        Set-Variable -Name 'addProfiles' -Value $true
-        
-    } else {
-
-        # Set Flag
-        Set-Variable -Name 'addProfiles' -Value $false
-        write_output -returnAfter $true -dir $dir -str ('ERROR: eq_profiles.json not found within the \config folder.')
+        if (
+            $validProfiles.count -gt 0
+        ) {
+            $addProfiles = $true
+        }
     }
 
     # Clear System Tray Sub-Menu Items
@@ -183,145 +353,238 @@ function list_devices {
         $contextMenu.Items.Clear();
     }
 
-    do {
+    while (
+
+        # Use for Debugging
+        # $index -lt 6
+
+        # Use to End Loop
+        $deviceErr -eq $false
+    ) {
         $index = $index + 1;
-        # write_output -returnAfter $true -dir $dir -str $err
+        # write_output -returnAfter $true -dir $dir -str $deviceErr
         # write_output -returnAfter $true -dir $dir -str $index
+
+        # Check If an Audio Device is Found at Each Index
         try {
-
-            # Check If an Audio Device is Found at Each Index
             Set-Variable -Name 'audioDevice' -Value (Get-AudioDevice -Index $index)
-
-            # Record Audio Device Parameters for All Playback Devices
-            if (
-                $audioDevice.Type -eq 'Playback'
-            ) {
-                $tableAdd = $null
-                $tableAdd = @{
-                    'Index' = $index
-                    'Name' = $audioDevice.Name
-                    'Default' = $audioDevice.Default
-                    'Type' = $audioDevice.Type
-                    'ID' = $audioDevice.ID
-                }
-
-                $table.Add($audioDevice.Name, $tableAdd)
-                # $table[$index]
-                
-                # Add System Tray Menu Item
-                Set-Variable -Name 'audioDeviceName' -Value $audioDevice.Name
-                Set-Variable -Name 'deviceName' -Value ($index, $audioDeviceName -join ': ')
-                $menuDevice = $contextMenu.Items.Add($deviceName)
-
-                # Pack System Tray Sub-Menu Items
-                if (
-                    $addProfiles -eq $true
-                ) {
-                    $validProfiles | ForEach-Object {
-
-                        # Add System Tray Sub-Menu Items
-                        $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                        $eqProfile.Text = $_
-                        $eqProfile.Font = $fontReg
-                        $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
-
-                        # Add System Tray Sub-Menu Click
-                        $eqProfile.add_Click(
-                            {
-                                # Check Active Audio Device
-                                Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
-                                Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
-                                Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
-                                Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                                if (
-                                    [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
-                                ) {
-                                    if (
-                                        $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
-                                    ) {
-                                        # Switch Parametric EQ Profile
-                                        Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+$this+' parametric EQ profile successfully assigned.')
-                                    } else {
-
-                                        # Switch Devices and Parametric EQ Profile
-                                        Set-AudioDevice -Index $deviceIndex
-                                        Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
-                                        write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    # Add System Try Sub-Menu Item for None
-                    $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                    $eqProfile.Text = 'None'
-                    $eqProfile.Font = $fontReg
-                    $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
-
-                    # Add System Tray Sub-Menu Click for None
-                    $eqProfile.add_Click(
-                        {
-                            # Check Active Audio Device
-                            Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
-                            Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
-                            Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
-                            Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                            if (
-                                [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
-                            ) {
-                                if (
-                                    $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
-                                ) {
-                                    # Remove the Parametric EQ Profile
-                                    Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
-                                } else {
-
-                                    # Switch Devices and Remove the Parametric EQ Profile
-                                    Set-AudioDevice -Index $deviceIndex
-                                    Remove-Item -Path ($dir+'\config\config.txt')
-                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
-                                }
-                            } else {
-
-                                # Switch Devices
-                                Set-AudioDevice -Index $deviceIndex
-                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
-                            }
-                        }
-                    )
-                } else {
-
-                    # Add System Tray Sub-Menu Item for No EQ Profiles Found
-                    $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                    $eqProfile.Text = 'No EQ Profiles Found'
-                    $eqProfile.Font = $fontReg
-                    $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
-                }
-                
-            }
         } catch {
             Set-Variable -Name 'returnedVal' -Value $_
             Set-Variable -Name 'returnedVal' -Value ($returnedVal -Replace '\s','')
             if (
                 $returnedVal -eq 'NoAudioDevicewiththatIndex'
             ) {
-                Set-Variable -Name 'err' -Value $true
-                # write_output -returnAfter $true -dir $dir -str ('ERROR: Invalid Index.')
+                Set-Variable -Name 'deviceErr' -Value $true
             } else {
-                write_output -returnAfter $true -dir $dir -str ('WARNING: No Audio Device Found at Index ['+$index+'].')
+                continue
+            }
+        }
+
+        # Record Audio Device Parameters for All Playback Devices
+        if (
+            $audioDevice.Type -eq 'Playback'
+        ) {
+            $tableAdd = $null
+            $tableAdd = @{
+                'Index' = $index
+                'Name' = $audioDevice.Name
+                'Default' = $audioDevice.Default
+                'Type' = $audioDevice.Type
+                'ID' = $audioDevice.ID
+            }
+
+            $table.Add($audioDevice.Name, $tableAdd)
+            # $table[$index]
+
+            # Add System Tray Menu Item
+            Set-Variable -Name 'audioDeviceName' -Value $audioDevice.Name
+            Set-Variable -Name 'deviceName' -Value ($index, $audioDeviceName -join ': ')
+            $menuDevice = $contextMenu.Items.Add($deviceName)
+
+            # Pack System Tray Sub-Menu Items
+            if (
+                $addProfiles -eq $true
+            ) {
+                $validProfiles | ForEach-Object {
+
+                    # Add System Tray Sub-Menu Items
+                    $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                    $eqProfile.Text = $_
+                    $eqProfile.Font = $fontReg
+                    $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+
+                    # Add System Tray Sub-Menu Click
+                    $eqProfile.add_Click(
+                        {
+
+                            # Check Active Audio Device
+                            Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
+                            Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
+                            Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
+                            Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
+                            Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ' ')[1])
+                            if (
+                                [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
+                            ) {
+                                if (
+                                    $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
+                                ) {
+
+                                    # Switch Parametric EQ Profile
+                                    Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+$this+' parametric EQ profile successfully assigned.')
+
+                                    # Narrate
+                                    if (
+                                        $global:narrator -eq $true
+                                    ) {
+                                        $synth.Speak($this)
+                                    }
+                                } else {
+
+                                    # Switch Devices and Parametric EQ Profile
+                                    Set-AudioDevice -Index $deviceIndex
+                                    Copy-Item -Path ($dir+'\config\Parametric_EQ_'+$this+'.txt') -Destination ($dir+'\config\config.txt')
+                                    write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with the parametric EQ profile for '+$this+'.')
+
+                                    # Narrate
+                                    if (
+                                        $global:narrator -eq $true
+                                    ) {
+                                        $synth.Speak($deviceUserName + 'with' + $this)
+                                    }
+                                }
+                            }
+
+                            # Update App Title
+                            $sysTrayApp.Text = $sysTrayAppName+' - '+$deviceUserName+' ('+$this+')'
+                        }
+                    )
+                }
+
+                # Add System Try Sub-Menu Item for No Profile
+                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $eqProfile.Text = 'No Profile'
+                $eqProfile.Font = $fontReg
+                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+
+                # Add System Tray Sub-Menu Click for No Profile
+                $eqProfile.add_Click(
+                    {
+
+                        # Check Active Audio Device
+                        Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
+                        Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
+                        Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
+                        Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
+                        Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ' ')[1])
+
+                        if (
+                            [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
+                        ) {
+                            if (
+                                $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
+                            ) {
+
+                                # Remove the Parametric EQ Profile
+                                Remove-Item -Path ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak('No profile')
+                                }
+                            } else {
+
+                                # Switch Devices and Remove the Parametric EQ Profile
+                                Set-AudioDevice -Index $deviceIndex
+                                Remove-Item -Path ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak($deviceUserName + 'with no profile.')
+                                }
+                            }
+                        } else {
+
+                            if (
+                                $activeDeviceName -eq ($selectedDeviceName -split ': ')[1]
+                            ) {
+
+                                # Remove the Parametric EQ Profile
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak('No profile')
+                                }
+                            } else {
+
+                                # Switch Devices and Remove the Parametric EQ Profile
+                                Set-AudioDevice -Index $deviceIndex
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak($deviceUserName + 'with no profile.')
+                                }
+                            }
+                        }
+
+                        # Update App Title
+                        $sysTrayApp.Text = $sysTrayAppName+' - '+$deviceUserName+' ('+$this+')'
+                    }
+                )
+            } else {
+
+                # Add System Tray Sub-Menu Item for No EQ Profiles Found
+                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $eqProfile.Text = 'No EQ Profiles Found'
+                $eqProfile.Font = $fontReg
+                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+            } 
+        }
+    }
+
+    # Raise Notification
+    if (
+        $global:notifications -eq $true
+    ) {
+        if (
+            $connectionErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.'
+        } elseif (
+            $jsonErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json is not a valid .json file. Check the 'Output' for more information."
+        } elseif (
+            $profileErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: Error(s) found in eq_profiles.json. Check the 'Output' for more information."
+        } elseif (
+            $profileWarn -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json not found within the \config folder. Check the 'Output' for more information."
+        } else {
+            if (
+                $restart -eq $true
+            ) {
+                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists re-generated successfully.'
+            } else {
+                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists generated successfully.'
             }
         }
     }
-        until (
-            # Use for Debugging
-            # $index -eq 5
-
-            # Use to End Loop
-            $err -eq $true
-        )
 
     # Add System Tray Menu Functions
     $toolSepObj = New-Object System.Windows.Forms.ToolStripSeparator
@@ -330,16 +593,41 @@ function list_devices {
     $listDevices = $contextMenu.Items.Add('Refresh Devices');
     $exitSepObj = New-Object System.Windows.Forms.ToolStripSeparator
     $exitSep = $contextMenu.Items.Add($exitSepObj)
+    $narratorTool = $contextMenu.Items.Add('Narrator');
+    $notificationTool = $contextMenu.Items.Add('Notifications');
+    $audioSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $audioSep = $contextMenu.Items.Add($audioSepObj)
     $exitTool = $contextMenu.Items.Add('Exit');
+
+    # Add Menu Checks
+    if (
+        $global:narrator -eq $true
+    ) {
+        $narratorTool.Checked = $true
+    }
+    if (
+        $global:notifications -eq $true
+    ) {
+        $notificationTool.Checked = $true
+    }
 
     # Format System Tray Menu
     $outputTool.Font = $fontReg
     $listDevices.Font = $fontReg
+    $narratorTool.Font = $fontReg
     $exitTool.Font = $fontBold
 
     # Build Menu Function Actions
     $outputTool.add_Click(
         {
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Output')
+            }
+
             # Retrieve output.txt
             $outputText = Get-Content -Path ($dir+'\config\output.txt')
             $outputHeight = (Get-Content -Path ($dir+'\config\output.txt')).Length
@@ -352,7 +640,7 @@ function list_devices {
 
             # Build Output Form
             $outputObj = New-Object System.Windows.Forms.Form
-            $outputObj.Text = 'AutoEq Device Manager Output'
+            $outputObj.Text = $sysTrayAppName+' Output'
             $outputObj.Size = New-Object System.Drawing.Size @(1250, $formHeight)
             $outputObj.StartPosition = 'CenterScreen'
             $outputObj.AutoScroll = $true
@@ -393,20 +681,96 @@ function list_devices {
                 # Increment Position
                 $position = [Int]($position + 18)
             }
+
             # Display Output Form
-            $outputObj.Topmost = $True
-            $outputObj.Add_Shown({$outputObj.Activate()})  
+            $outputObj.Topmost = $true
+            $outputObj.Add_Shown({$outputObj.Activate()})
             [void] $outputObj.ShowDialog()
         }
     )
     $listDevices.add_Click(
         {
-            list_devices -dir $dir -contextMenu $contextMenu -restart $true
-            [System.Windows.Forms.MessageBox]::Show('NOTE: Audio Device list re-generated successfully.')
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Refresh Devices')
+            }
+
+            # Refresh Devices
+            list_devices -dir $dir -sysTrayApp $sysTrayApp -contextMenu $contextMenu -restart $true
+        }
+    )
+    $narratorTool.add_Click(
+        {
+            if (
+                $global:narrator -eq $false
+            ) {
+
+                # Turn Narrator On
+                $global:narrator = $true
+                $synth.Speak('Narrator On')
+
+                # Check Narrator
+                $this.Checked = $true
+            } else {
+
+                # Turn Narrator Off
+                $global:narrator = $false
+                $synth.Speak('Narrator Off')
+
+                # UnCheck Narrator
+                $this.Checked = $false
+            }
+        }
+    )
+    $notificationTool.add_Click(
+        {
+            if (
+                $global:notifications -eq $false
+            ) {
+
+                # Turn Notifications On
+                $global:notifications = $true
+
+                # Narrate
+                if (
+                    $global:narrator -eq $true
+                ) {
+                    $synth.Speak('Notifications On')
+                }
+
+                # Check Notifications
+                $this.Checked = $true
+            } else {
+
+                # Turn Notifications Off
+                $global:notifications = $false
+
+                # Narrate
+                if (
+                    $global:narrator -eq $true
+                ) {
+                    $synth.Speak('Notifications Off')
+                }
+
+                # UnCheck Notifications
+                $this.Checked = $false
+            }
         }
     )
     $exitTool.add_Click(
         {
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Exit')
+            }
+
+            # Close and Clean-up
             $sysTrayApp.Visible = $false
             $appContext.ExitThread()
             Stop-Process $pid
@@ -422,28 +786,29 @@ function list_devices {
 
 # Build System Tray Icon Object
 $sysTrayApp = New-Object System.Windows.Forms.NotifyIcon
-$sysTrayApp.Text = 'AutoEq Device Manager'
+$sysTrayApp.Text = $sysTrayAppName
 
 # Assign Icon
-# Music Info: E90B, difficult to make out the resolution
-# Music Album: E93C, difficult to interpret
-# Music Note: EC4F
-# Music Sharing: F623, difficult to make out the resolution
-# Audio: E8D6, appears nicely
-# Equalizer: E9E9, appears nicely
-# Earbud: F4C0
-# Mix Volumes: F4C3, difficult to make out the resolution
-# Speakers: E7F5
-# Headphone: E7F6, appears nicely
+#   Music Info: E90B, difficult to make out the resolution
+#   Music Album: E93C, difficult to interpret
+#   Music Note: EC4F
+#   Music Sharing: F623, difficult to make out the resolution
+#   Audio: E8D6, appears nicely
+#   Equalizer: E9E9, appears nicely
+#   Earbud: F4C0
+#   Mix Volumes: F4C3, difficult to make out the resolution
+#   Speakers: E7F5
+#   Headphone: E7F6, appears nicely
 
-$sysTrayApp.Icon = create_icon -UnicodeChar 0xE9E9 -font $fontIcon -size 12 -color 'White' -x -4 -y 0
+$iconCode = 0xE9E9
+$sysTrayApp.Icon = create_icon -UnicodeChar $iconCode -font $fontIcon -size 12 -color 'White' -x -4 -y 0
 $sysTrayApp.Visible = $true
 
 # Build System Tray Menu Object
 $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
 
 # Pack System Tray Menu Items
-list_devices -dir $dir -contextMenu $contextMenu -restart $false
+list_devices -dir $dir -sysTrayApp $sysTrayApp -contextMenu $contextMenu -restart $false
 
 # Pack System Tray Menu
 $sysTrayApp.ContextMenuStrip = $contextMenu;

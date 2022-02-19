@@ -7,6 +7,9 @@ The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net
 - Ability to switch between any connected playback device
 - Ability to change or remove parametric EQ profiles for any number of user-configured audio devices
 - Output window for viewing status of the application tasks
+- Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and EQ profile on mouse over
+- Narrator setting, allowing for enabling or disabling audio read-out of selections made in the system-try tool in the default Windows Narration voice
+- Notification setting, allowing for enabling or disabling balloon-tip notifications on application processes
 
 # Installation
 Instructions for setting-up the AutoEq Device Manager.

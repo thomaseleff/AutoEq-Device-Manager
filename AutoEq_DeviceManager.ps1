@@ -663,7 +663,7 @@ function list_devices {
         # Add System Tray Sub-Menu Click for Current Active Config
         $eqProfile.add_Click(
             {
-                & .\Editor.exe "$dir\config\config.txt"
+                cd $dir; .\Editor.exe "$dir\config\config.txt";
             }
         )
 
@@ -678,7 +678,7 @@ function list_devices {
             # Add System Tray Sub-Menu Click
             $eqProfile.add_Click(
                 {
-                    & .\Editor.exe "$dir\config\Parametric_EQ_$this.txt"
+                    cd $dir; .\Editor.exe "$dir\config\Parametric_EQ_$this.txt"
                 }
             )
         }
@@ -842,7 +842,7 @@ function list_devices {
     )
     $configuratorTool.add_Click(
         {
-            Start-Process .\Configurator.exe
+            Start-Process "$dir\Configurator.exe"
         }
     )
     $narratorTool.add_Click(

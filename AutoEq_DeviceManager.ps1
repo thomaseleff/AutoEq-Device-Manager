@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Speech
 
 # Assign Global Variables
-Set-Variable -Name 'version' -Value (New-Object System.Version('1.4.0'))
+Set-Variable -Name 'version' -Value (New-Object System.Version('1.5.0'))
 Set-Variable -Name 'sysTrayAppName' -Value 'AutoEq Device Manager'
 Set-Variable -Name 'dir' -Value (split-path $MyInvocation.MyCommand.Path -Parent)
 Set-Variable -Name 'fontBold' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Bold))
@@ -503,6 +503,8 @@ function list_devices {
                 }
 
                 # Add System Try Sub-Menu Item for No Profile
+                $profileSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+                $profileSep = $menuDevice.DropDownItems.Add($profileSepObj);
                 $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
                 $eqProfile.Text = 'No Profile'
                 $eqProfile.Font = $fontReg
@@ -527,7 +529,7 @@ function list_devices {
                             ) {
 
                                 # Remove the Parametric EQ Profile
-                                Remove-Item -Path ($dir+'\config\config.txt')
+                                Out-File -FilePath ($dir+'\config\config.txt')
                                 write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
 
                                 # Narrate
@@ -540,7 +542,7 @@ function list_devices {
 
                                 # Switch Devices and Remove the Parametric EQ Profile
                                 Set-AudioDevice -Index $deviceIndex
-                                Remove-Item -Path ($dir+'\config\config.txt')
+                                Out-File -FilePath ($dir+'\config\config.txt')
                                 write_output -returnAfter $false -dir $dir -str ('NOTE: '+($selectedDeviceName -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
 
                                 # Narrate
@@ -591,6 +593,7 @@ function list_devices {
                 $eqProfile.Text = 'No EQ Profiles Found'
                 $eqProfile.Font = $fontReg
                 $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+
             } 
         }
     }
@@ -631,27 +634,104 @@ function list_devices {
         } 
     }
 
-    # Add System Tray Menu Functions
-    $toolSepObj = New-Object System.Windows.Forms.ToolStripSeparator
-    $toolSep = $contextMenu.Items.Add($toolSepObj);
+    $deviceSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $deviceSep = $contextMenu.Items.Add($deviceSepObj);
+
+    # Add Functions
     $outputTool = $contextMenu.Items.Add('Output');
     $listDevices = $contextMenu.Items.Add('Refresh Devices');
-    $exitSepObj = New-Object System.Windows.Forms.ToolStripSeparator
-    $exitSep = $contextMenu.Items.Add($exitSepObj)
+    $toolSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $toolSep = $contextMenu.Items.Add($toolSepObj);
+
+    # Add EqualizerAPO-Related Functions
+    $configuratorTool = $contextMenu.Items.Add('Open Configurator');
+    $editorTool = $contextMenu.Items.Add('Open Editor');
+
+    # Pack Editor Sub-Menu Items
+    if (
+        $addProfiles -eq $true
+    ) {
+
+        # Add System Try Sub-Menu Item for Current Active Config
+        $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+        $eqProfile.Text = 'Current Active Config'
+        $eqProfile.Font = $fontReg
+        $eqProfileNew = $editorTool.DropDownItems.Add($eqProfile);
+        $profileSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+        $profileSep = $editorTool.DropDownItems.Add($profileSepObj);
+
+        # Add System Tray Sub-Menu Click for Current Active Config
+        $eqProfile.add_Click(
+            {
+                & .\Editor.exe "$dir\config\config.txt"
+            }
+        )
+
+        $validProfiles | ForEach-Object {
+
+            # Add System Tray Sub-Menu Items
+            $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+            $eqProfile.Text = $_
+            $eqProfile.Font = $fontReg
+            $eqProfileNew = $editorTool.DropDownItems.Add($eqProfile);
+
+            # Add System Tray Sub-Menu Click
+            $eqProfile.add_Click(
+                {
+                    & .\Editor.exe "$dir\config\Parametric_EQ_$this.txt"
+                }
+            )
+        }
+    } else {
+
+        # Add System Tray Sub-Menu Item for No EQ Profiles Found
+        $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+        $eqProfile.Text = 'No EQ Profiles Found'
+        $eqProfile.Font = $fontReg
+        $eqProfileNew = $editorTool.DropDownItems.Add($eqProfile);
+        
+    }
+    $apoSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $apoSep = $contextMenu.Items.Add($apoSepObj);
+
+    # Add Settings
     $narratorTool = $contextMenu.Items.Add('Narrator');
     $notificationTool = $contextMenu.Items.Add('Notifications');
     $audioSepObj = New-Object System.Windows.Forms.ToolStripSeparator
-    $audioSep = $contextMenu.Items.Add($audioSepObj)
+    $audioSep = $contextMenu.Items.Add($audioSepObj);
+
+    # Add Resource Links
     if (
         $versionMismatch -eq $true
     ) {
-        $githubLink = $contextMenu.Items.Add('www.github.com/~/AutoEq-Device-Manager *New Version Available*');
+        $resourceSelection = $contextMenu.Items.Add('Resources - New Version Available');
     } else {
-        $githubLink = $contextMenu.Items.Add('www.github.com/~/AutoEq-Device-Manager');
+        $resourceSelection = $contextMenu.Items.Add('Resources');
     }
-    $autoEqLink = $contextMenu.Items.Add('www.github.com/~/AutoEq/~/results');
-    $linkSepObj = New-Object System.Windows.Forms.ToolStripSeparator
-    $linkSep = $contextMenu.Items.Add($linkSepObj)
+    $githubLink = New-Object System.Windows.Forms.ToolStripMenuItem
+    $githubLink.Text = ('www.github.com/~/AutoEq-Device-Manager')
+    $githubLink.Font = $fontLink
+    $githubLinkNew = $resourceSelection.DropDownItems.Add($githubLink);
+
+    $autoEqLink = New-Object System.Windows.Forms.ToolStripMenuItem
+    $autoEqLink.Text = ('www.github.com/~/AutoEq/~/results')
+    $autoEqLink.Font = $fontLink
+    $autoEqLinkNew = $resourceSelection.DropDownItems.Add($autoEqLink);
+
+    $eqAPOLink = New-Object System.Windows.Forms.ToolStripMenuItem
+    $eqAPOLink.Text = ('www.sourceforge.net/~/equalizerapo')
+    $eqAPOLink.Font = $fontLink
+    $eqAPOLinkNew = $resourceSelection.DropDownItems.Add($eqAPOLink);
+
+    $peaceLink = New-Object System.Windows.Forms.ToolStripMenuItem
+    $peaceLink.Text = ('www.sourceforge.net/~/peace-equalizer-apo-extension')
+    $peaceLink.Font = $fontLink
+    $peaceLinkNew = $resourceSelection.DropDownItems.Add($peaceLink);
+
+    $githubSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $githubSep = $contextMenu.Items.Add($githubSepObj);
+
+    # Add Window Navigation
     $exitTool = $contextMenu.Items.Add('Exit');
 
     # Add Menu Checks
@@ -669,9 +749,10 @@ function list_devices {
     # Format System Tray Menu
     $outputTool.Font = $fontReg
     $listDevices.Font = $fontReg
+    $configuratorTool.Font = $fontReg
+    $editorTool.Font = $fontReg
     $narratorTool.Font = $fontReg
-    $githubLink.Font = $fontLink
-    $autoEqLink.Font = $fontLink
+    $resourceSelection.Font = $fontReg
     $exitTool.Font = $fontBold
 
     # Build Menu Function Actions
@@ -759,6 +840,11 @@ function list_devices {
             list_devices -dir $dir -sysTrayApp $sysTrayApp -contextMenu $contextMenu -restart $true
         }
     )
+    $configuratorTool.add_Click(
+        {
+            Start-Process .\Configurator.exe
+        }
+    )
     $narratorTool.add_Click(
         {
             if (
@@ -825,6 +911,16 @@ function list_devices {
     $autoEqLink.add_Click(
         {
             Start-Process 'https://github.com/jaakkopasanen/AutoEq/tree/master/results'
+        }
+    )
+    $eqAPOLink.add_Click(
+        {
+            Start-Process 'https://sourceforge.net/projects/equalizerapo/'
+        }
+    )
+    $peaceLink.add_Click(
+        {
+            Start-Process 'https://sourceforge.net/projects/peace-equalizer-apo-extension/'
         }
     )
     $exitTool.add_Click(

@@ -20,13 +20,17 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Speech
 
-# Assign Global Varibles
+# Assign Global Variables
+Set-Variable -Name 'version' -Value (New-Object System.Version('1.4.0'))
 Set-Variable -Name 'sysTrayAppName' -Value 'AutoEq Device Manager'
 Set-Variable -Name 'dir' -Value (split-path $MyInvocation.MyCommand.Path -Parent)
 Set-Variable -Name 'fontBold' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Bold))
 Set-Variable -Name 'fontReg' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Regular))
+Set-Variable -Name 'fontLink' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Italic))
 Set-Variable -Name 'outputHeader' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Bold))
 Set-Variable -Name 'outputBody' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Regular))
+Set-Variable -Name 'windowsTheme' -Value ((Get-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ -Name "SystemUsesLightTheme").SystemUsesLightTheme)
+Set-Variable -Name 'appTheme' -Value ((Get-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ -Name "AppsUseLightTheme").AppsUseLightTheme)
 
 # Create Text to Speech Synth Object
 Set-Variable -Name 'synth' -Value (New-Object System.Speech.Synthesis.SpeechSynthesizer)
@@ -41,17 +45,25 @@ $global:notifications = $true
 function create_icon {
     param (
         $unicodeChar,
-        $font,
         $size,
-        $color,
+        $theme,
         $x,
         $y
     )
 
+    # Set Icon Color Based on Theme
+    if (
+        $theme -eq 1
+    ) {
+        Set-Variable -Name 'color' -Value 'Black'
+    } else {
+        Set-Variable -Name 'color' -Value 'White'
+    }
+
     # Create Icon Bitmap from Segoe MDL2 Assets
     Set-Variable -Name 'fontIcon' -Value ([System.Drawing.Font]::new('Segoe MDL2 Assets', $size, [System.Drawing.FontStyle]::Regular))
     $brush = [System.Drawing.Brushes]::$color
-    $bitmap = New-Object System.Drawing.Bitmap 16,16
+    $bitmap = New-Object System.Drawing.Bitmap 128,128
     $bitmapGraphics = [System.Drawing.Graphics]::FromImage($bitmap)
     $bitmapGraphics.DrawString([char]($unicodeChar), $fontIcon, $brush, $x, $y)
     $bitmapGraphics.SmoothingMode = 'AntiAlias'
@@ -124,6 +136,7 @@ function list_devices {
     # Set Local Variables
     Set-Variable -Name 'index' -Value 0
     Set-Variable -Name 'deviceErr' -Value $false
+    Set-Variable -Name 'versionMismatch' -Value $false
     Set-Variable -Name 'connectionErr' -Value $false
     Set-Variable -Name 'jsonErr' -Value $false
     Set-Variable -Name 'profileWarn' -Value $false
@@ -146,12 +159,39 @@ function list_devices {
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
     write_output -returnAfter $false -dir $dir -str ('|                                                                       '+$sysTrayAppName+'                                                                       |')
     write_output -returnAfter $false -dir $dir -str ('+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+')
-    write_output -returnAfter $true -dir $dir -str ('    Date Time: '+(Get-Date -Format G))
+    write_output -returnAfter $false -dir $dir -str ('    Date Time: '+(Get-Date -Format G))
+    write_output -returnAfter $true -dir $dir -str ('    Version  : v'+$version)
 
-    # Validate Internet Connection
+    # Validate Internet Connection and Release Version
     if (
-        (Test-Connection -ComputerName www.github.com -Quiet) -ne $true
-    ) {
+        (Test-Connection -ComputerName www.github.com -Quiet) -eq $true
+    ){
+        
+        # Get Latest Release Version in Two Ways Since PowerShell HTML Parsing is Broken
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        try {
+            $request = Invoke-WebRequest -Uri 'https://github.com/thomaseleff/AutoEq-Device-Manager/releases/latest' -UseBasicParsing
+            $html = New-Object -Com "HTMLFile"
+            [string]$htmlBody = $request.Content
+            $html.write([ref]$htmlBody)
+        } catch {
+            $request = Invoke-WebRequest -Uri 'https://github.com/thomaseleff/AutoEq-Device-Manager/releases/latest'
+            $html = $request.ParsedHtml
+        }
+        $versionLatest = $html.getElementsByClassName('ml-1') | Where-Object{$_.textContent -match '[a-zA-Z]{1}\d{1,2}\.\d{1,2}\.\d{1,3}'}
+        $versionLatest = $versionLatest.textContent -Replace "[^0-9.]"
+        $versionLatest = New-Object System.Version($versionLatest)
+
+        # Logging
+        if (
+            ($version.CompareTo($versionLatest)) -lt 0
+        ) {
+            # Capture Version Mismatch for Notification
+            $versionMismatch = $true
+            write_output -returnAfter $true -dir $dir -str ('NOTE: A new version, v'+$versionLatest+', is available on [www.github.com].')
+        }
+
+    } else {
 
         # Capture Connection Error for Notification
         $connectionErr = $true
@@ -169,7 +209,7 @@ function list_devices {
         try {
             $json = Get-Content -Raw -Path ($dir+'\config\eq_profiles.json') | ConvertFrom-Json
             $json = $json.GetEnumerator() | Sort-Object device
-            $json | ConvertTo-Json | Out-File ($dir+'\config\eq_profiles.json')
+            # $json | ConvertTo-Json | Out-File ($dir+'\config\eq_profiles.json')
         } catch {
 
             # Capture Json Error for Notification
@@ -422,7 +462,7 @@ function list_devices {
                             Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
                             Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
                             Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                            Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ' ')[1])
+                            Set-Variable -Name 'deviceUserName' -Value $selectedDeviceName
                             if (
                                 [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
                             ) {
@@ -477,7 +517,7 @@ function list_devices {
                         Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
                         Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
                         Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                        Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ' ')[1])
+                        Set-Variable -Name 'deviceUserName' -Value $selectedDeviceName
 
                         if (
                             [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
@@ -584,6 +624,11 @@ function list_devices {
                 raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists generated successfully.'
             }
         }
+        if (
+            $versionMismatch -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: A new version is available on [www.github.com].'
+        } 
     }
 
     # Add System Tray Menu Functions
@@ -597,6 +642,16 @@ function list_devices {
     $notificationTool = $contextMenu.Items.Add('Notifications');
     $audioSepObj = New-Object System.Windows.Forms.ToolStripSeparator
     $audioSep = $contextMenu.Items.Add($audioSepObj)
+    if (
+        $versionMismatch -eq $true
+    ) {
+        $githubLink = $contextMenu.Items.Add('www.github.com/~/AutoEq-Device-Manager *New Version Available*');
+    } else {
+        $githubLink = $contextMenu.Items.Add('www.github.com/~/AutoEq-Device-Manager');
+    }
+    $autoEqLink = $contextMenu.Items.Add('www.github.com/~/AutoEq/~/results');
+    $linkSepObj = New-Object System.Windows.Forms.ToolStripSeparator
+    $linkSep = $contextMenu.Items.Add($linkSepObj)
     $exitTool = $contextMenu.Items.Add('Exit');
 
     # Add Menu Checks
@@ -615,6 +670,8 @@ function list_devices {
     $outputTool.Font = $fontReg
     $listDevices.Font = $fontReg
     $narratorTool.Font = $fontReg
+    $githubLink.Font = $fontLink
+    $autoEqLink.Font = $fontLink
     $exitTool.Font = $fontBold
 
     # Build Menu Function Actions
@@ -644,7 +701,7 @@ function list_devices {
             $outputObj.Size = New-Object System.Drawing.Size @(1250, $formHeight)
             $outputObj.StartPosition = 'CenterScreen'
             $outputObj.AutoScroll = $true
-            $outputObj.Icon = create_icon -UnicodeChar 0xEA37 -font $fontIcon -size 12 -color 'Black' -x -5 -y 0
+            $outputObj.Icon = create_icon -UnicodeChar 0xEA37 -size 100 -theme 1 -x -10 -y 12
 
             # Initialize Vertical Position
             $position = 0
@@ -668,7 +725,7 @@ function list_devices {
                     $outputLabel.ForeColor = 'Orange'
                     $outputLabel.Font = $outputBody
                 } elseif (
-                    ($_.ToLower().contains('NOTE:'.ToLower())) -Or ($_.ToLower().contains('Date Time:'.ToLower()))
+                    ($_.ToLower().contains('NOTE:'.ToLower())) -Or ($_.ToLower().contains('Date Time:'.ToLower())) -Or ($_.ToLower().contains('Version  :'.ToLower()))
                 ) {
                     $outputLabel.Font = $outputBody
                 } else {
@@ -760,6 +817,16 @@ function list_devices {
             }
         }
     )
+    $githubLink.add_Click(
+        {
+            Start-Process 'https://github.com/thomaseleff/AutoEq-Device-Manager/releases/latest'
+        }
+    )
+    $autoEqLink.add_Click(
+        {
+            Start-Process 'https://github.com/jaakkopasanen/AutoEq/tree/master/results'
+        }
+    )
     $exitTool.add_Click(
         {
 
@@ -801,7 +868,7 @@ $sysTrayApp.Text = $sysTrayAppName
 #   Headphone: E7F6, appears nicely
 
 $iconCode = 0xE9E9
-$sysTrayApp.Icon = create_icon -UnicodeChar $iconCode -font $fontIcon -size 12 -color 'White' -x -4 -y 0
+$sysTrayApp.Icon = create_icon -UnicodeChar $iconCode -size 100 -theme $windowsTheme -x -25 -y 5
 $sysTrayApp.Visible = $true
 
 # Build System Tray Menu Object

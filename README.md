@@ -1,15 +1,16 @@
 # AutoEq Device Manager
 The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net/projects/equalizerapo/) parametric equalizer for Windows with the [AutoEq](https://github.com/jaakkopasanen/AutoEq) project, providing a system-tray tool to switch playback devices and apply audio device EQ profiles. This tool is written in Windows PowerShell and utilizes the [AudioDeviceCmdlets](https://github.com/frgnca/AudioDeviceCmdlets) module to manage Windows playback devices.
 
-![AutoEq Device Manager Animation](/assets/AutoEqDeviceManager_Animation_v1.3.0.gif)
+![AutoEq Device Manager Animation](/assets/AutoEqDeviceManager_Animation_v1.5.1.gif)
 
 # Features
-- Ability to switch between any connected playback device
+- Ability to switch between any connected audio playback device
 - Ability to change or remove parametric EQ profiles for any number of user-configured audio devices
 - Output window for viewing status of the application tasks
 - Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and EQ profile on mouse over
 - Narrator setting, allowing for enabling or disabling audio read-out of selections made in the system-try tool in the default Windows Narration voice
 - Notification setting, allowing for enabling or disabling balloon-tip notifications on application processes
+- Connectivity with EqualizerAPO Configurator to easily install EqualizerAPO for audio playback devices and with the EqualizerAPO Editor to easily modify EQ profiles.
 
 # Installation
 Instructions for setting-up the AutoEq Device Manager.

@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Speech
 
 # Assign Global Variables
-Set-Variable -Name 'version' -Value (New-Object System.Version('1.5.0'))
+Set-Variable -Name 'version' -Value (New-Object System.Version('1.5.1'))
 Set-Variable -Name 'sysTrayAppName' -Value 'AutoEq Device Manager'
 Set-Variable -Name 'dir' -Value (split-path $MyInvocation.MyCommand.Path -Parent)
 Set-Variable -Name 'fontBold' -Value ([System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Bold))
@@ -31,6 +31,17 @@ Set-Variable -Name 'outputHeader' -Value ([System.Drawing.Font]::new('Courier Ne
 Set-Variable -Name 'outputBody' -Value ([System.Drawing.Font]::new('Courier New', 9, [System.Drawing.FontStyle]::Regular))
 Set-Variable -Name 'windowsTheme' -Value ((Get-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ -Name "SystemUsesLightTheme").SystemUsesLightTheme)
 Set-Variable -Name 'appTheme' -Value ((Get-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\ -Name "AppsUseLightTheme").AppsUseLightTheme)
+Set-Variable -Name 'apoChildLst' -Value @(Get-ChildItem -Path "HKLM:\SOFTWARE\EqualizerAPO\Child APOs" | Select-Object Name)
+Set-Variable -Name 'apoDeviceIds' -Value @()
+
+# Create List of Audio Devices with APO Installed
+if (
+    $apoChildLst.length -gt 0
+) {
+    $apoChildLst.GetEnumerator() | ForEach-Object {
+        $apoDeviceIds += ($_.Name -split '\\')[-1]
+    }
+}
 
 # Create Text to Speech Synth Object
 Set-Variable -Name 'synth' -Value (New-Object System.Speech.Synthesis.SpeechSynthesizer)
@@ -48,7 +59,17 @@ function create_icon {
         $size,
         $theme,
         $x,
-        $y
+        $y,
+        $unicodeChar1 = $false,
+        $size1 = $false,
+        $color1 = $false,
+        $x1 = $false,
+        $y1 = $false,
+        $unicodeChar2 = $false,
+        $size2 = $false,
+        $color2 = $false,
+        $x2 = $false,
+        $y2 = $false
     )
 
     # Set Icon Color Based on Theme
@@ -66,6 +87,18 @@ function create_icon {
     $bitmap = New-Object System.Drawing.Bitmap 128,128
     $bitmapGraphics = [System.Drawing.Graphics]::FromImage($bitmap)
     $bitmapGraphics.DrawString([char]($unicodeChar), $fontIcon, $brush, $x, $y)
+    if (
+        $unicodeChar1 -ne $false
+    ) {
+        $brush1 = [System.Drawing.Brushes]::$color1
+        $bitmapGraphics.DrawString([char]($unicodeChar1), $fontIcon, $brush1, $x1, $y1)
+    }
+    if (
+        $unicodeChar2 -ne $false
+    ) {
+        $brush2 = [System.Drawing.Brushes]::$color2
+        $bitmapGraphics.DrawString([char]($unicodeChar2), $fontIcon, $brush2, $x2, $y2)
+    }
     $bitmapGraphics.SmoothingMode = 'AntiAlias'
     $bitmapGraphics.TextRenderingHint = 'AntiAliasGridFit'
     $bitmapGraphics.InterpolationMode = 'High'
@@ -135,6 +168,7 @@ function list_devices {
 
     # Set Local Variables
     Set-Variable -Name 'index' -Value 0
+    Set-Variable -Name 'apoErr' -Value $true
     Set-Variable -Name 'deviceErr' -Value $false
     Set-Variable -Name 'versionMismatch' -Value $false
     Set-Variable -Name 'connectionErr' -Value $false
@@ -188,14 +222,14 @@ function list_devices {
         ) {
             # Capture Version Mismatch for Notification
             $versionMismatch = $true
-            write_output -returnAfter $true -dir $dir -str ('NOTE: A new version, v'+$versionLatest+', is available on [www.github.com].')
+            write_output -returnAfter $false -dir $dir -str ('NOTE: A new version, v'+$versionLatest+', is available on [www.github.com].')
         }
 
     } else {
 
         # Capture Connection Error for Notification
         $connectionErr = $true
-        write_output -returnAfter $true -dir $dir -str ('ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.')
+        write_output -returnAfter $false -dir $dir -str ('ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.')
     }
 
     # Validate Json
@@ -231,6 +265,8 @@ function list_devices {
                 write_output -returnAfter $false -dir $dir -str ('     ~ The current eq_profiles.json has been backed up as eq_profiles_backup_'+(Get-Date -Format 'MM_dd_yyyy_HH_MM_SS')+'.json within the \config folder.')
                 write_output -returnAfter $false -dir $dir -str ('     ~ The latest eq_profiles.json has been downloaded from [www.github.com].')
                 write_output -returnAfter $true -dir $dir -str ("     ~ Modify the new template eq_profiles.json and then click 'Refresh Devices' from the tool menu.")
+            } else {
+                write_output -returnAfter $false -dir $dir -str ('')
             }
         }
     } else {
@@ -250,6 +286,8 @@ function list_devices {
             # Logging
             write_output -returnAfter $false -dir $dir -str ('     ~ The latest eq_profiles.json has been downloaded from [www.github.com].')
             write_output -returnAfter $true -dir $dir -str ("     ~ Modify the new template eq_profiles.json and then click 'Refresh Devices' from the tool menu.")
+        } else {
+            write_output -returnAfter $false -dir $dir -str ('')
         }
     }
 
@@ -393,6 +431,7 @@ function list_devices {
         $contextMenu.Items.Clear();
     }
 
+    # Add Audio Devices and Pack Sub-Menu Items
     while (
 
         # Use for Debugging
@@ -443,7 +482,7 @@ function list_devices {
 
             # Pack System Tray Sub-Menu Items
             if (
-                $addProfiles -eq $true
+                ($addProfiles -eq $true) -and (($audioDevice.ID -split '}.')[-1] -in $apoDeviceIds)
             ) {
                 $validProfiles | ForEach-Object {
 
@@ -452,6 +491,9 @@ function list_devices {
                     $eqProfile.Text = $_
                     $eqProfile.Font = $fontReg
                     $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+
+                    # Capture Valid APO Audio Device for Notification
+                    $apoErr = $false
 
                     # Add System Tray Sub-Menu Click
                     $eqProfile.add_Click(
@@ -462,7 +504,9 @@ function list_devices {
                             Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
                             Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
                             Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                            Set-Variable -Name 'deviceUserName' -Value $selectedDeviceName
+                            Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ': ')[1]-split ' \(')[0]
+
+                            # Switch Device and Parametric EQ Profile
                             if (
                                 [System.IO.File]::Exists($dir+'\config\Parametric_EQ_'+$this+'.txt') -eq $true
                             ) {
@@ -505,13 +549,13 @@ function list_devices {
                 # Add System Try Sub-Menu Item for No Profile
                 $profileSepObj = New-Object System.Windows.Forms.ToolStripSeparator
                 $profileSep = $menuDevice.DropDownItems.Add($profileSepObj);
-                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                $eqProfile.Text = 'No Profile'
-                $eqProfile.Font = $fontReg
-                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+                $noProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $noProfile.Text = 'No Profile'
+                $noProfile.Font = $fontReg
+                $noProfileNew = $menuDevice.DropDownItems.Add($noProfile);
 
                 # Add System Tray Sub-Menu Click for No Profile
-                $eqProfile.add_Click(
+                $noProfile.add_Click(
                     {
 
                         # Check Active Audio Device
@@ -519,7 +563,7 @@ function list_devices {
                         Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
                         Set-Variable -Name 'selectedDeviceName' -Value ($this.OwnerItem)
                         Set-Variable -Name 'deviceIndex' -Value (($selectedDeviceName -split ': ')[0])
-                        Set-Variable -Name 'deviceUserName' -Value $selectedDeviceName
+                        Set-Variable -Name 'deviceUserName' -Value (($selectedDeviceName -split ': ')[1]-split ' \(')[0]
 
                         if (
                             [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
@@ -586,54 +630,100 @@ function list_devices {
                         $sysTrayApp.Text = $sysTrayAppName+' - '+$deviceUserName+' ('+$this+')'
                     }
                 )
+            } elseif(
+                ($addProfiles -eq $true) -and (($audioDevice.ID -split '}.')[-1] -notin $apoDeviceIds)
+            ) {
+
+                # Assign ToolTipText for Audio Device with EqualizerAPO Not Installed
+                $menuDevice.ToolTipText = 'EqualizerAPO Not Installed'
+ 
+                # Add System Tray Click for Audio Device with EqualizerAPO Not Installed
+                $menuDevice.add_Click(
+                    {
+
+                        # Check Active Audio Device
+                        Set-Variable -Name 'activeDevice' -Value (Get-AudioDevice -Playback)
+                        Set-Variable -Name 'activeDeviceName' -Value $activeDevice.Name
+                        Set-Variable -Name 'deviceIndex' -Value (($this -split ': ')[0])
+                        Set-Variable -Name 'deviceUserName' -Value (($this -split ': ')[1]-split ' \(')[0]
+
+                        if (
+                            [System.IO.File]::Exists($dir+'\config\config.txt') -eq $true
+                        ) {
+                            if (
+                                $activeDeviceName -eq ($this -split ': ')[1]
+                            ) {
+
+                                # Remove the Parametric EQ Profile
+                                Out-File -FilePath ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak('No profile')
+                                }
+                            } else {
+
+                                # Switch Devices and Remove the Parametric EQ Profile
+                                Set-AudioDevice -Index $deviceIndex
+                                Out-File -FilePath ($dir+'\config\config.txt')
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($this -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak($deviceUserName + 'with no profile.')
+                                }
+                            }
+                        } else {
+
+                            if (
+                                $activeDeviceName -eq ($this -split ': ')[1]
+                            ) {
+
+                                # Remove the Parametric EQ Profile
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: Parametric EQ profile successfully unassigned.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak('No profile')
+                                }
+                            } else {
+
+                                # Switch Devices and Remove the Parametric EQ Profile
+                                Set-AudioDevice -Index $deviceIndex
+                                write_output -returnAfter $false -dir $dir -str ('NOTE: '+($this -split ': ')[1]+' successfully assigned with no parametric EQ profile.')
+
+                                # Narrate
+                                if (
+                                    $global:narrator -eq $true
+                                ) {
+                                    $synth.Speak($deviceUserName + 'with no profile.')
+                                }
+                            }
+                        }
+
+                        # Update App Title
+                        $sysTrayApp.Text = $sysTrayAppName+' - '+$deviceUserName+' (No Profile)'
+                    }
+                )
+
             } else {
 
                 # Add System Tray Sub-Menu Item for No EQ Profiles Found
-                $eqProfile = New-Object System.Windows.Forms.ToolStripMenuItem
-                $eqProfile.Text = 'No EQ Profiles Found'
-                $eqProfile.Font = $fontReg
-                $eqProfileNew = $menuDevice.DropDownItems.Add($eqProfile);
+                $naProfile = New-Object System.Windows.Forms.ToolStripMenuItem
+                $naProfile.Text = 'No EQ Profiles Found'
+                $naProfile.Font = $fontReg
+                $naProfileNew = $menuDevice.DropDownItems.Add($naProfile);
 
             } 
         }
     }
-
-    # Raise Notification
-    if (
-        $global:notifications -eq $true
-    ) {
-        if (
-            $connectionErr -eq $true
-        ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.'
-        } elseif (
-            $jsonErr -eq $true
-        ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json is not a valid .json file. Check the 'Output' for more information."
-        } elseif (
-            $profileErr -eq $true
-        ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: Error(s) found in eq_profiles.json. Check the 'Output' for more information."
-        } elseif (
-            $profileWarn -eq $true
-        ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json not found within the \config folder. Check the 'Output' for more information."
-        } else {
-            if (
-                $restart -eq $true
-            ) {
-                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists re-generated successfully.'
-            } else {
-                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists generated successfully.'
-            }
-        }
-        if (
-            $versionMismatch -eq $true
-        ) {
-            raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: A new version is available on [www.github.com].'
-        } 
-    }
-
     $deviceSepObj = New-Object System.Windows.Forms.ToolStripSeparator
     $deviceSep = $contextMenu.Items.Add($deviceSepObj);
 
@@ -663,7 +753,15 @@ function list_devices {
         # Add System Tray Sub-Menu Click for Current Active Config
         $eqProfile.add_Click(
             {
+                # Open Config
                 cd $dir; .\Editor.exe "$dir\config\config.txt";
+                
+                # Narrate
+                if (
+                    $global:narrator -eq $true
+                ) {
+                    $synth.Speak('Open Current Active Config')
+                }
             }
         )
 
@@ -678,7 +776,15 @@ function list_devices {
             # Add System Tray Sub-Menu Click
             $eqProfile.add_Click(
                 {
+                    # Open Config
                     cd $dir; .\Editor.exe "$dir\config\Parametric_EQ_$this.txt"
+                
+                    # Narrate
+                    if (
+                        $global:narrator -eq $true
+                    ) {
+                        $synth.Speak('Open '+$this)
+                    }
                 }
             )
         }
@@ -843,6 +949,13 @@ function list_devices {
     $configuratorTool.add_Click(
         {
             Start-Process "$dir\Configurator.exe"
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Open Configurator')
+            }
         }
     )
     $narratorTool.add_Click(
@@ -906,21 +1019,49 @@ function list_devices {
     $githubLink.add_Click(
         {
             Start-Process 'https://github.com/thomaseleff/AutoEq-Device-Manager/releases/latest'
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Open Auto E Q Device Manager Git hub')
+            }
         }
     )
     $autoEqLink.add_Click(
         {
             Start-Process 'https://github.com/jaakkopasanen/AutoEq/tree/master/results'
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Open Auto E Q Git hub')
+            }
         }
     )
     $eqAPOLink.add_Click(
         {
             Start-Process 'https://sourceforge.net/projects/equalizerapo/'
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Open Equalizer A P O Sourceforge')
+            }
         }
     )
     $peaceLink.add_Click(
         {
             Start-Process 'https://sourceforge.net/projects/peace-equalizer-apo-extension/'
+
+            # Narrate
+            if (
+                $global:narrator -eq $true
+            ) {
+                $synth.Speak('Open Peace Sourceforge')
+            }
         }
     )
     $exitTool.add_Click(
@@ -940,11 +1081,61 @@ function list_devices {
         }
     )
 
-    # Output Audio Devices
-    $table = $table.GetEnumerator() | Sort-Object Index
-    $table.GetEnumerator() | ForEach-Object {
-         $_.Value
+    # Raise Notifications
+    if (
+        $global:notifications -eq $true
+    ) {
+
+        # Raise Version Mismatch Note
+        if (
+            $versionMismatch -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: A new version is available on [www.github.com].'
+        }
+
+        # Riase Error when EqualizerAPO is Not Installed for Any Connected Audio Devices
+        if (
+            $apoErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: EqualizerAPO is not installed for any connected Audio Devices.'
+        }
+
+        # Raise Internet Connection Error
+        if (
+            $connectionErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str 'ERROR: No Internet connection to [www.github.com]. Connect to the Internet or resolve connection issues.'
+        }
+
+        # Raise Configuration Errors
+        if (
+            $jsonErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json is not a valid .json file. Check the 'Output' for more information."
+        } elseif (
+            $profileErr -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: Error(s) found in eq_profiles.json. Check the 'Output' for more information."
+        } elseif (
+            $profileWarn -eq $true
+        ) {
+            raise_notification -sysTrayApp $sysTrayApp -type Error -str "ERROR: eq_profiles.json not found within the \config folder. Check the 'Output' for more information."
+        } else {
+            if (
+                $restart -eq $true
+            ) {
+                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists re-generated successfully.'
+            } else {
+                raise_notification -sysTrayApp $sysTrayApp -type Info -str 'NOTE: Device lists generated successfully.'
+            }
+        }
     }
+
+    # Output Audio Devices
+    # $table = $table.GetEnumerator() | Sort-Object Index
+    # $table.GetEnumerator() | ForEach-Object {
+    #      $_.Value
+    # }
 }
 
 # Build System Tray Icon Object
@@ -952,16 +1143,16 @@ $sysTrayApp = New-Object System.Windows.Forms.NotifyIcon
 $sysTrayApp.Text = $sysTrayAppName
 
 # Assign Icon
-#   Music Info: E90B, difficult to make out the resolution
-#   Music Album: E93C, difficult to interpret
-#   Music Note: EC4F
-#   Music Sharing: F623, difficult to make out the resolution
-#   Audio: E8D6, appears nicely
-#   Equalizer: E9E9, appears nicely
-#   Earbud: F4C0
-#   Mix Volumes: F4C3, difficult to make out the resolution
-#   Speakers: E7F5
-#   Headphone: E7F6, appears nicely
+#   Music Info    : E90B, difficult to make out the resolution
+#   Music Album   : E93C, difficult to interpret
+#   Music Note    : EC4F
+#   Music Sharing : F623, difficult to make out the resolution
+#   Audio         : E8D6, appears nicely
+#   Equalizer     : E9E9, appears nicely
+#   Earbud        : F4C0
+#   Mix Volumes   : F4C3, difficult to make out the resolution
+#   Speakers      : E7F5
+#   Headphone     : E7F6, appears nicely
 
 $iconCode = 0xE9E9
 $sysTrayApp.Icon = create_icon -UnicodeChar $iconCode -size 100 -theme $windowsTheme -x -25 -y 5

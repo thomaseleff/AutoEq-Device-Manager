@@ -1,16 +1,16 @@
 # AutoEq Device Manager
-The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net/projects/equalizerapo/) parametric equalizer for Windows with the [AutoEq](https://github.com/jaakkopasanen/AutoEq) project, providing a system-tray tool to switch playback devices and apply audio device EQ profiles. This tool is written in Windows PowerShell and utilizes the [AudioDeviceCmdlets](https://github.com/frgnca/AudioDeviceCmdlets) module to manage Windows playback devices.
+The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net/projects/equalizerapo/) parametric equalizer for Windows with the [AutoEq](https://github.com/jaakkopasanen/AutoEq) project, providing a system-tray tool to switch playback devices and apply audio device equalizer profiles. This tool is written in Windows PowerShell and utilizes the [AudioDeviceCmdlets](https://github.com/frgnca/AudioDeviceCmdlets) module to manage Windows playback devices.
 
 ![AutoEq Device Manager Animation](/assets/AutoEqDeviceManager_Animation_v1.5.1.gif)
 
 # Features
 - Ability to switch between any connected audio playback device
-- Ability to change or remove parametric EQ profiles for any number of audio playback devices, configurable by device type ('Speaker' or 'Headphone')
+- Ability to change or remove parametric equalizer profiles for any number of audio playback devices, configurable by device type ('Speaker' or 'Headphone')
 - Output window for viewing status of the application tasks
-- Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and EQ profile on mouse over
+- Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and equalizer profile on mouse over
 - Narrator setting, allowing for enabling or disabling audio read-out of selections made in the system-try tool in the default Windows Narration voice
 - Notification setting, allowing for enabling or disabling balloon-tip notifications on application processes
-- Connectivity with EqualizerAPO Configurator to easily install EqualizerAPO for audio playback devices and with the EqualizerAPO Editor to easily modify EQ profiles.
+- Connectivity with EqualizerAPO Configurator to easily install EqualizerAPO for audio playback devices and with the EqualizerAPO Editor to easily modify equalizer profiles.
 
 # Installation
 Instructions for setting-up the AutoEq Device Manager.
@@ -132,7 +132,7 @@ It is recommended to first run the AutoEq Device Manager manually in order to ve
       PowerShell -File "C:/Program Files/EqualizerAPO/AutoEq_DeviceManager.ps1"
       ```
 5. Accept all prompts to install the required AudioDeviceCmdlets module.
-6. To verify that the AutoEq Device Manager is running successfully, review the icons in the system-tray. Among your other system-tray applications, you should also see the Windows Equalizer icon from the Segoe MDL2 Assets. This is the AutoEq Device Manager, which can be right-clicked to swap between devices and apply any of the user-configured parametric EQ profiles. See the following **Navigating AutoEq Device Manager** section for more information on using the system-tray tool.
+6. To verify that the AutoEq Device Manager is running successfully, review the icons in the system-tray. Among your other system-tray applications, you should also see the Windows Equalizer icon from the Segoe MDL2 Assets. This is the AutoEq Device Manager, which can be right-clicked to swap between devices and apply any of the user-configured parametric equalizer profiles. See the following **Navigating AutoEq Device Manager** section for more information on using the system-tray tool.
 
     | Asset          | Description    | Unicode        |
     |     :---:      |     :---:      |     :---:      |
@@ -169,14 +169,14 @@ Once the AutoEq Device Manager is verified to be working successfully, create a 
 
 ## Navigating AutoEq Device Manager
 
-Within the AutoEq Device Manager, there is a primary menu containing the tool operation tasks as well as the list of all connected playback devices. Additionally, for each connected playback device, there is a secondary sub-menu for selecting one of the user-configured parametric EQ profiles.
+Within the AutoEq Device Manager, there is a primary menu containing the tool operation tasks as well as the list of all connected playback devices. Additionally, for each connected playback device, there is a secondary sub-menu for selecting one of the user-configured parametric equalizer profiles.
 
-### Switching Playback Devices and Parametric EQ Profiles
+### Switching Playback Devices and Parametric Equalizer Profiles
 
 1. Navigate to the system-tray and right-click on the Equalizer icon (this is the AutoEq Device Manager).
 2. In the pop-up menu, click on the playback device you wish to switch to.
    - If the desired playback device is not available within the list, click on "Refresh Devices", which will re-fresh the menu with the latest connected devices.
-3. Within the sub-menu of the selected playback device, click on the audio device parametric EQ profile you wish to enable, or select "None" to switch devices and remove any parametric EQ profile.
+3. Within the sub-menu of the selected playback device, click on the audio device parametric equalizer profile you wish to enable, or select "None" to switch devices and remove any parametric equalizer profile.
 
 ### Checking the Task Status
 

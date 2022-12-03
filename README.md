@@ -5,7 +5,7 @@ The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net
 
 # Features
 - Ability to switch between any connected audio playback device
-- Ability to change or remove parametric EQ profiles for any number of user-configured audio devices
+- Ability to change or remove parametric EQ profiles for any number of audio playback devices, configurable by device type ('Speaker' or 'Headphone')
 - Output window for viewing status of the application tasks
 - Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and EQ profile on mouse over
 - Narrator setting, allowing for enabling or disabling audio read-out of selections made in the system-try tool in the default Windows Narration voice
@@ -69,7 +69,7 @@ To upgrade the version of PowerShell, follow the instructions in the "Upgrading 
 ## Downloading AutoEq Device Manager
 The AutoEq Device Manager consists of two components,
 1. AutoEq_DeviceManager.ps1
-2. eq_profiles.json
+2. autoeq_config.json
 
 Navigate to [AutoEq_DeviceManager.ps1](AutoEq_DeviceManager.ps1), copying the contents into a ".ps1" file within the same directory as the Equalizer APO installation. Default directory below.
 - File name _is not_ important.
@@ -78,8 +78,8 @@ Navigate to [AutoEq_DeviceManager.ps1](AutoEq_DeviceManager.ps1), copying the co
    C:/Program Files/EqualizerAPO
    ```
 
-Navigate to [eq_profiles.json](config/eq_profiles.json), copying the contents into a file named "eq_profiles.json" within the /config sub-directory of the Equalizer APO installation. Default directory below.
-- File name _is_ important, the file _must_ be named eq_profiles.json.
+Navigate to [autoeq_config.json](config/autoeq_config.json), copying the contents into a file named "autoeq_config.json" within the /config sub-directory of the Equalizer APO installation. Default directory below.
+- File name _is_ important, the file _must_ be named autoeq_config.json.
 
    ```
    C:/Program Files/EqualizerAPO/config
@@ -88,15 +88,15 @@ Navigate to [eq_profiles.json](config/eq_profiles.json), copying the contents in
 # Usage
 Configuring and running the AutoEq Device Manager.
 
-## Configuring eq_profiles.json
-eq_profiles.json contains the user-configured names of your audio devices and the corresponding URL path to the Parametric EQ profiles from [AutoEq/results](https://github.com/jaakkopasanen/AutoEq/tree/master/results). Any number of devices and profiles can be configured within eq_profiles.json. The AutoEq Device Manager will validate all URL paths to ensure they source valid parametric EQ profiles and will download the profiles automatically into the /config sub-directory. Default sub-directory below.
+## Configuring AutoEq Equalizer Profiles
+AutoEq equalizer profiles can be provided within autoeq_config.json, which contains the user-configured names of your audio devices and the corresponding URL path to the Parametric EQ profiles from [AutoEq/results](https://github.com/jaakkopasanen/AutoEq/tree/master/results). Any number of devices and profiles can be configured within autoeq_config.json. The AutoEq Device Manager will validate all URL paths to ensure they source valid parametric EQ profiles and will download the profiles automatically into the /config sub-directory. Default sub-directory below.
 
    ```
    C:/Program Files/EqualizerAPO/config
    ```
-To modify eq_profiles.json,
-1. Open eq_profiles.json in a text editor.
-2. Modify existing entries or add new entries in or to eq_profiles.json for all audio devices you wish to specify unique Parametric EQ profiles for through Equalizer APO.
+To modify autoeq_config.json,
+1. Open autoeq_config.json in a text editor.
+2. Modify existing entries or add new entries in or to autoeq_config.json for all audio devices you wish to specify unique Parametric EQ profiles for through Equalizer APO.
 3. Each entry requires two parameters, "device" and "parametricConfig", to be assigned values. Each parameter is described below.
    - device: Quoted string for the user-provided name of the audio device. Not required to match the name of the device from [AutoEq/results](https://github.com/jaakkopasanen/AutoEq/tree/master/results).
    - parametricConfig: Quoted string for the URL path to the Raw Parametric EQ profile from [AutoEq/results](https://github.com/jaakkopasanen/AutoEq/tree/master/results). This **MUST** be the URL path to a **Parametric** EQ profile pointing directly to the **Raw** file. Example URL path to the Parametric EQ profile for Sennheiser HD 600 below.
@@ -109,6 +109,13 @@ To modify eq_profiles.json,
 
    ![Locating the Raw File URL Path](/assets/Raw_Profile.png)
 
+## Configuring non-AutoEq Equalizer Profiles
+Non-AutoEq equalizer profiles can be provided within the /config sub-directory and be created manually through the EqualizerAPO editor or through [Peace](https://sourceforge.net/projects/peace-equalizer-apo-extension/). Any equalizer profile with the following filename syntax will be automatically configured within the system-tray tool.
+
+```
+Parametric_EQ_*.txt
+```
+_Note that the system-tray tool will not validate that the manually-created equalizer profiles contain valid configurations for EqualizerAPO._
 
 ## Running AutoEq Device Manager
 AutoEq Device Manager can be run manually through a Windows PowerShell session or scheduled through the Windows Task Scheduler to run at log-on.

@@ -175,14 +175,14 @@ Within the AutoEq Device Manager, there is a primary menu containing the tool op
 
 1. Navigate to the system-tray and right-click on the Equalizer icon (this is the AutoEq Device Manager).
 2. In the pop-up menu, click on the playback device you wish to switch to.
-   - If the desired playback device is not available within the list, click on "Refresh Devices", which will re-fresh the menu with the latest connected devices.
+   - If the desired playback device is not available within the list, click on "Refresh", which will re-fresh the menu with the latest connected devices.
 3. Within the sub-menu of the selected playback device, click on the audio device parametric equalizer profile you wish to enable, or select "None" to switch devices and remove any parametric equalizer profile.
 
 ### Checking the Task Status
 
 1. In case of any unexpected behavior within the AutoEq Device Manager, navigate to the system-tray and right-click on the Equalizer icon (this is the AutoEq Device Manager).
 2. In the pop-up menu, click on "Output", which will open the output window showing the status of all executed tasks within a given session of the AutoEq Device Manager.
-   - A new session is always created when the AutoEq Device Manager initially runs, or when "Refresh Devices" is clicked.
+   - A new session is always created when the AutoEq Device Manager initially runs, or when "Refresh" is clicked.
    - In addition to reviewing the status of all executed tasks within the "Output" window, you can also access output.txt within the /config sub-directory of the Equalizer APO installation. Default file path below.
 
      ```

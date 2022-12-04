@@ -1306,9 +1306,8 @@ function build_settings {
     # Define Window and Control Dimensions
     $measure = @($global:playbackDeviceLst.Count, $global:equalizerProfileLst.Count, 7) | Measure-Object -Maximum
     $maxItems = $measure.Maximum
-    $windowLength = [Int](145 + ($maxItems * 32))
-    $tabControlLength = $windowLength - 94
-    $tableLength = [Int]($maxItems * 9.1667)
+    $windowLength = [Int](200 + ($maxItems * 26.9) + 54)
+    $tabControlLength = $windowLength - 98
 
     # Build Settings Form
     $settingsForm = New-Object System.Windows.Forms.Form
@@ -1350,7 +1349,6 @@ function build_settings {
             # Pack Table
             $deviceTable = New-Object System.Windows.Forms.TableLayoutPanel
             $deviceTable.Location = New-Object System.Drawing.Point 0, 52
-            $deviceTable.Size = New-Object System.Drawing.Point 200, $tableLength
             $deviceTable.Anchor = ('Left', 'Right', 'Top', 'Bottom')
             $deviceTable.ColumnCount = 3
             $deviceTable.RowCount = $maxItems
@@ -1559,7 +1557,6 @@ function build_settings {
             # Pack Table
             $profileTable = New-Object System.Windows.Forms.TableLayoutPanel
             $profileTable.Location = New-Object System.Drawing.Point 0, 52
-            $profileTable.Size = New-Object System.Drawing.Point 200, $tableLength
             $profileTable.Anchor = ('Left', 'Right', 'Top', 'Bottom')
             $profileTable.ColumnCount = 3
             $profileTable.RowCount = $maxItems
@@ -1719,7 +1716,7 @@ function build_settings {
 
     # Pack Save Button
     $saveButton = New-Object System.Windows.Forms.Button
-    $saveButton.Location = New-Object System.Drawing.Point (515 - 90), ($windowLength - 74)
+    $saveButton.Location = New-Object System.Drawing.Point (515 - 90), ($windowLength - 75)
     $saveButton.Size = New-Object System.Drawing.Point 80, 24
     $saveButton.Margin = 3
     $saveButton.Padding = 2
@@ -1744,7 +1741,7 @@ function build_settings {
 
     # Pack Cancel Button
     $cancelButton = New-Object System.Windows.Forms.Button
-    $cancelButton.Location = New-Object System.Drawing.Point 515, ($windowLength - 74)
+    $cancelButton.Location = New-Object System.Drawing.Point 515, ($windowLength - 75)
     $cancelButton.Size = New-Object System.Drawing.Point 80, 24
     $cancelButton.Margin = 3
     $cancelButton.Padding = 2

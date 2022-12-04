@@ -1306,7 +1306,7 @@ function build_settings {
     # Define Window and Control Dimensions
     $measure = @($global:playbackDeviceLst.Count, $global:equalizerProfileLst.Count, 7) | Measure-Object -Maximum
     $maxItems = $measure.Maximum
-    $windowLength = [Int](52 + ($maxItems * 41))
+    $windowLength = [Int](145 + ($maxItems * 32))
     $tabControlLength = $windowLength - 94
     $tableLength = [Int]($maxItems * 9.1667)
 

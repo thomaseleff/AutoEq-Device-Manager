@@ -10,7 +10,7 @@ The AutoEq Device Manager integrates the [Equalizer APO](https://sourceforge.net
 - Dynamic tool-tip for the system-tray tool icon displaying the previously selected playback device and equalizer profile on mouse over
 - Narrator setting, allowing for enabling or disabling audio read-out of selections made in the system-try tool in the default Windows Narration voice
 - Notification setting, allowing for enabling or disabling balloon-tip notifications on application processes
-- Connectivity with EqualizerAPO Configurator to easily install EqualizerAPO for audio playback devices and with the EqualizerAPO Editor to easily modify equalizer profiles.
+- Connectivity with Equalizer APO Configurator to easily install Equalizer APO for audio playback devices and with the Equalizer APO Editor to easily modify equalizer profiles.
 
 # Installation
 Instructions for setting-up the AutoEq Device Manager.

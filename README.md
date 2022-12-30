@@ -110,12 +110,12 @@ To modify autoeq_config.json,
    ![Locating the Raw File URL Path](/assets/Raw_Profile.png)
 
 ## Configuring non-AutoEq Equalizer Profiles
-Non-AutoEq equalizer profiles can be provided within the /config sub-directory and be created manually through the EqualizerAPO editor or through [Peace](https://sourceforge.net/projects/peace-equalizer-apo-extension/). Any equalizer profile with the following filename syntax will be automatically configured within the system-tray tool.
+Non-AutoEq equalizer profiles can be provided within the /config sub-directory and be created manually through the Equalizer APO editor or through [Peace](https://sourceforge.net/projects/peace-equalizer-apo-extension/). Any equalizer profile with the following filename syntax will be automatically configured within the system-tray tool.
 
 ```
 Parametric_EQ_*.txt
 ```
-_Note that the system-tray tool will not validate that the manually-created equalizer profiles contain valid configurations for EqualizerAPO._
+_Note that the system-tray tool will not validate that the manually-created equalizer profiles contain valid configurations for Equalizer APO._
 
 ## Running AutoEq Device Manager
 AutoEq Device Manager can be run manually through a Windows PowerShell session or scheduled through the Windows Task Scheduler to run at log-on.
